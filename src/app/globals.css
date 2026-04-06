@@ -605,7 +605,38 @@ a {
 .ops-metrics {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ops-controls {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr;
+  gap: 12px;
+}
+
+.ops-controls label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.ops-controls input,
+.ops-controls select {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 0 12px;
+}
+
+.ops-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 14px;
 }
 
@@ -631,11 +662,53 @@ a {
 }
 
 .ops-table-wrap {
-  margin-top: 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   padding: 20px;
   background: linear-gradient(180deg, rgba(14, 24, 43, 0.95), rgba(8, 15, 26, 0.9));
+}
+
+.ops-detail-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(14, 24, 43, 0.95), rgba(8, 15, 26, 0.9));
+}
+
+.ops-detail-panel h2,
+.ops-detail-message h3 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.ops-detail-content {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.ops-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.ops-detail-row span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ops-detail-message {
+  margin-top: 10px;
+}
+
+.ops-detail-message p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .ops-table-head {
@@ -672,6 +745,7 @@ a {
   padding: 12px 10px;
   border-bottom: 1px solid var(--line);
   font-size: 0.93rem;
+  vertical-align: top;
 }
 
 .ops-table th {
@@ -687,9 +761,84 @@ a {
   color: #fecaca;
 }
 
+.ops-row-active {
+  background: rgba(125, 211, 252, 0.08);
+}
+
+.ops-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+}
+
+.ops-badge-success {
+  border-color: rgba(110, 231, 183, 0.45);
+  background: rgba(110, 231, 183, 0.18);
+  color: #c8ffe8;
+}
+
+.ops-badge-warning {
+  border-color: rgba(253, 224, 71, 0.45);
+  background: rgba(253, 224, 71, 0.12);
+  color: #fff6c7;
+}
+
+.ops-badge-danger {
+  border-color: rgba(252, 165, 165, 0.5);
+  background: rgba(252, 165, 165, 0.15);
+  color: #ffd4d4;
+}
+
+.ops-actions-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ops-action {
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 0 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.ops-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ops-action.approve {
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+.ops-action.reject {
+  border-color: rgba(252, 165, 165, 0.45);
+}
+
+.ops-action.complete {
+  border-color: rgba(125, 211, 252, 0.45);
+}
+
 @media (max-width: 960px) {
   .ops-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-grid {
+    grid-template-columns: 1fr;
   }
 
   .ops-hero {

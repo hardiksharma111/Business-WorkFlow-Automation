@@ -2,6 +2,10 @@ node_modules
 .next
 out
 coverage
+.venv
+__pycache__/
+*.pyc
+backend/data/
 .env
 .env.local
 .env.development.local

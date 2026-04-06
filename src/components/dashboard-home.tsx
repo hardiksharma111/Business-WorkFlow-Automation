@@ -108,6 +108,7 @@ type NegotiationRunResponse = {
 type WorkspaceKey = "command-center" | "workflow-flow" | "system-health" | "model-lab";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+const API_HOST = API_BASE.replace(/^https?:\/\//, "");
 
 const workspaceOptions: Array<{ value: WorkspaceKey; label: string; description: string }> = [
   {
@@ -316,6 +317,8 @@ export default function DashboardHome() {
               ))}
             </select>
           </label>
+
+          <span className="mini-chip">Backend {API_HOST}</span>
 
           <Link className="secondary-action dashboard-link" href="/operations">
             Operations

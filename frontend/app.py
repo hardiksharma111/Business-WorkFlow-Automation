@@ -5,7 +5,7 @@ import os
 # 1. Page Configuration
 st.set_page_config(page_title="Synova | Nexus", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. Logo Loading Logic (For both topbar and center page)
+# 2. Logo Loading (Main directory se logo.png uthayega)
 def get_base64_logo(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
@@ -14,112 +14,85 @@ def get_base64_logo(file_path):
 
 logo_base64 = get_base64_logo("logo.png")
 
-# 3. Enhanced CSS for Modern Black/Navy Gradient Theme
+# 3. Custom CSS (Image 4 ke shading aur rounded box par based)
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
 
+    /* Background with deep radial gradient */
     .stApp {{
-        background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
+        background: radial-gradient(circle at center, #1e293b 0%, #0f172a 60%, #020617 100%) !important;
         color: #f8fafc;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }}
 
-    /* Hiding Default Streamlit Header/Footer */
+    /* Hiding default Streamlit elements */
     header, footer, [data-testid="stSidebarNav"] {{ visibility: hidden; }}
 
-    /* MODERN LOGIN CARD */
-    .login-container {{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        width: 100%;
-    }}
-
+    /* Centered Login Card */
     .login-card {{
         background: rgba(30, 41, 59, 0.4);
         backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 28px;
-        padding: 70px;
-        max-width: 500px;
-        width: 100%;
+        border-radius: 30px;
+        padding: 60px;
+        max-width: 450px;
+        margin: 120px auto;
         text-align: center;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
     }}
 
-    /* HEADING GRADIENT TEXT */
     .hero-text {{
-        font-size: 58px;
+        font-size: 52px;
         font-weight: 800;
-        line-height: 1.1;
         background: linear-gradient(to bottom right, #ffffff, #94a3b8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 25px;
+        margin-bottom: 20px;
     }}
 
-    /* UNIFIED BUTTON STYLING (Sign-In) */
+    /* Professional Blue Buttons */
     .stButton > button {{
         background: linear-gradient(90deg, #3b82f6, #a855f7) !important;
-        border-radius: 14px !important;
+        border-radius: 12px !important;
         color: white !important;
         font-weight: 700;
-        font-size: 16px;
-        padding: 14px 30px !important;
+        padding: 12px 0 !important;
         width: 100%;
         border: none;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
         transition: 0.3s ease;
     }}
 
-    .stButton > button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
-    }}
-
-    /* Placeholder text for inputs */
+    /* Input box styling */
     input[type="text"], input[type="password"] {{
-        background: rgba(15, 23, 42, 0.7) !important;
+        background: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: white !important;
         border-radius: 10px !important;
-        color: #f8fafc !important;
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# Main Login UI Container
-st.markdown('<div class="login-container"><div class="login-card">', unsafe_allow_html=True)
+# --- UI LAYOUT ---
+st.markdown('<div class="login-card">', unsafe_allow_html=True)
 
-# Logo Integration
+# Logo Display
 if logo_base64:
-    st.markdown(f"""
-    <div style="margin: 0 auto 35px;">
-        <img src="data:image/png;base64,{logo_base64}" style="max-height:80px; width:auto;">
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<img src="data:image/png;base64,{logo_base64}" style="width:70px; margin-bottom:20px;">', unsafe_allow_html=True)
 else:
-    # Fallback placeholder if no logo.png exists
-    st.markdown("""
-    <div style="width:70px; height:70px; background:#1e3a8a; border-radius:12px; margin: 0 auto 35px; display:grid; place-items:center; font-size:30px; font-weight:800; color:white;">
-        S
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div style="font-size:40px; margin-bottom:20px;">💠</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="hero-text">Welcome to<br>Synova Nexus.</div>', unsafe_allow_html=True)
-st.markdown('<p style="color:#94a3b8; margin-bottom:45px; font-size:15px;">Initialize core syntax operations.</p>', unsafe_allow_html=True)
+st.markdown('<div class="hero-text">Synova</div>', unsafe_allow_html=True)
+st.markdown('<p style="color:#94a3b8; margin-bottom:40px;">Enter your credentials to initialize Nexus.</p>', unsafe_allow_html=True)
 
-# Input constrained for modern look
-col_input, _ = st.columns([1, 0.01])
-with col_input:
-    st.text_input("Wizard ID", placeholder="Ex: WIZ-ALPHA", label_visibility="collapsed")
-    st.text_input("Access Cipher", type="password", placeholder="••••••••", label_visibility="collapsed")
+# Inputs
+user_id = st.text_input("Wizard ID", placeholder="Ex: WIZ-01", label_visibility="collapsed")
+cipher = st.text_input("Access Cipher", type="password", placeholder="••••••••", label_visibility="collapsed")
 
-st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
+st.write("") # Spacer
 
 if st.button("Initialize Nexus"):
-    # Clear local storage/cache to ensure clean redirection to multi-page system
+    # Ye user ko Dashboard page par le jayega
     st.switch_page("pages/1_Dashboard.py")
 
-st.markdown('</div></div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)

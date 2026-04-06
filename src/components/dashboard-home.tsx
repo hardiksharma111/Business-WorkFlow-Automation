@@ -162,6 +162,7 @@ function MiniSparkline({ values }: { values: number[] }) {
 
 export default function DashboardHome() {
   const [mode, setMode] = useState<ViewMode>("command-center");
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [tasks, setTasks] = useState<WorkflowTask[]>([]);
   const [history, setHistory] = useState<ServiceHistoryItem[]>([]);
@@ -235,6 +236,11 @@ export default function DashboardHome() {
     };
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   const heroMetrics = useMemo(() => {
     const total = analytics?.total_tasks ?? tasks.length;
     const completed = analytics?.completed_tasks ?? tasks.filter((task) => task.status === "completed").length;
@@ -260,6 +266,7 @@ export default function DashboardHome() {
   const topIntents = analytics?.top_intents ?? [];
   const topSources = analytics?.source_mix ?? [];
   const executionMix = analytics?.execution_mix ?? [];
+  const apiLabel = API_HOST.replace(/^www\./, "");
 
   const handleNegotiationSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -405,6 +412,24 @@ export default function DashboardHome() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="status-ribbon" aria-label="Live status ribbon">
+        <article className="status-ribbon-item">
+          <span>Frontend</span>
+          <strong>Ready</strong>
+          <p>Blue control room on port 3000</p>
+        </article>
+        <article className="status-ribbon-item">
+          <span>Backend</span>
+          <strong>{systemStatus ? prettyLabel(systemStatus.overall) : "Syncing"}</strong>
+          <p>{apiLabel}</p>
+        </article>
+        <article className="status-ribbon-item">
+          <span>Workspace</span>
+          <strong>{selectedMode.label}</strong>
+          <p>{currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+        </article>
       </section>
 
       <section className="signal-grid" id="signal-grid">

@@ -35,3 +35,13 @@ class EmbeddingService:
             return [vector.tolist() for vector in vectors]
         except Exception:
             return [self._fallback_embedding(text) for text in text_list]
+
+    def check_health(self) -> tuple[str, str]:
+        if self._model is None:
+            return "loading", "Model is not loaded yet; waiting for first embedding request."
+
+        try:
+            self._model.encode(["health ping"], normalize_embeddings=True)
+            return "online", "Embedding model is loaded and responsive."
+        except Exception as exc:
+            return "offline", f"Embedding model error: {exc}"

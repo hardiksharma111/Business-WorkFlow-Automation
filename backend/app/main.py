@@ -12,6 +12,8 @@ from app.models import (
     WorkflowDecision,
     WorkflowIntakeRequest,
     WorkflowRunResponse,
+    SystemStatusResponse,
+    ServiceStatus,
     WorkflowStatusUpdateRequest,
     WorkflowTask,
 )
@@ -33,16 +35,47 @@ task_store = WorkflowTaskStore("./data/workflows.db")
 evaluation_service = EvaluationService(workflow_engine)
 
 
+def get_system_status() -> SystemStatusResponse:
+    ollama_state, ollama_detail, ollama_latency = ollama_service.check_health()
+    embeddings_state, embeddings_detail = embedding_service.check_health()
+    chroma_state, chroma_detail = vector_store.check_health()
+
+    services = [
+        ServiceStatus(
+            name="ollama",
+            state=ollama_state,
+            detail=ollama_detail,
+            latency_ms=ollama_latency,
+        ),
+        ServiceStatus(name="embeddings", state=embeddings_state, detail=embeddings_detail),
+        ServiceStatus(name="chromadb", state=chroma_state, detail=chroma_detail),
+    ]
+
+    states = {service.state for service in services}
+    if "offline" in states:
+        overall = "offline"
+    elif "loading" in states:
+        overall = "loading"
+    else:
+        overall = "online"
+
+    return SystemStatusResponse(overall=overall, services=services)
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    status = get_system_status()
+    is_online = {service.name: service.state != "offline" for service in status.services}
+
     return HealthResponse(
-        status="ok",
-        services={
-            "ollama": True,
-            "embeddings": True,
-            "chroma": True,
-        },
+        status="ok" if status.overall != "offline" else "degraded",
+        services=is_online,
     )
+
+
+@app.get("/api/v1/system/status", response_model=SystemStatusResponse)
+def system_status() -> SystemStatusResponse:
+    return get_system_status()
 
 
 @app.post("/api/v1/knowledge/documents")

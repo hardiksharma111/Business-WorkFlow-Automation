@@ -18,6 +18,18 @@ type WorkflowTask = {
   metadata?: Record<string, string>;
 };
 
+type ServiceStatus = {
+  name: string;
+  state: "online" | "loading" | "offline";
+  detail: string;
+  latency_ms?: number | null;
+};
+
+type SystemStatus = {
+  overall: "online" | "loading" | "offline";
+  services: ServiceStatus[];
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 async function fetchTasks(): Promise<WorkflowTask[]> {
@@ -46,6 +58,18 @@ async function updateTaskStatus(taskId: string, status: string): Promise<void> {
   }
 }
 
+async function fetchSystemStatus(): Promise<SystemStatus> {
+  const response = await fetch(`${API_BASE}/api/v1/system/status`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to load backend system status.");
+  }
+
+  return response.json();
+}
+
 function prettyLabel(value: string): string {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -60,6 +84,8 @@ export default function OperationsDashboardPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [actionLoadingTaskId, setActionLoadingTaskId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -84,6 +110,32 @@ export default function OperationsDashboardPage() {
 
     load();
     const timer = setInterval(load, 5000);
+
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSystemStatus = async () => {
+      try {
+        const next = await fetchSystemStatus();
+        if (mounted) {
+          setSystemStatus(next);
+          setStatusError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setStatusError(err instanceof Error ? err.message : "Failed to load status.");
+        }
+      }
+    };
+
+    loadSystemStatus();
+    const timer = setInterval(loadSystemStatus, 4000);
 
     return () => {
       mounted = false;
@@ -171,6 +223,18 @@ export default function OperationsDashboardPage() {
     return "ops-badge";
   };
 
+  const serviceStateClass = (state: "online" | "loading" | "offline") => {
+    if (state === "online") {
+      return "svc-dot svc-online";
+    }
+    if (state === "loading") {
+      return "svc-dot svc-loading";
+    }
+    return "svc-dot svc-offline";
+  };
+
+  const overallLabel = systemStatus ? prettyLabel(systemStatus.overall) : "Checking";
+
   return (
     <main className="ops-shell">
       <section className="ops-hero">
@@ -242,6 +306,39 @@ export default function OperationsDashboardPage() {
             ))}
           </select>
         </label>
+      </section>
+
+      <section className="ops-system-panel">
+        <header className="ops-system-head">
+          <h2>Settings & Backend Health</h2>
+          <span className={serviceStateClass(systemStatus?.overall ?? "loading")}>
+            <span />
+            {overallLabel}
+          </span>
+        </header>
+
+        <p className="ops-note">
+          Service states: green = online, yellow = loading/waiting, red = offline.
+        </p>
+        {statusError ? <p className="ops-error">{statusError}</p> : null}
+
+        <div className="ops-service-grid">
+          {(systemStatus?.services ?? []).map((service) => (
+            <article key={service.name} className="ops-service-card">
+              <div className="ops-service-top">
+                <h3>{prettyLabel(service.name)}</h3>
+                <span className={serviceStateClass(service.state)}>
+                  <span />
+                  {prettyLabel(service.state)}
+                </span>
+              </div>
+              <p>{service.detail}</p>
+              {typeof service.latency_ms === "number" ? (
+                <small>Latency: {service.latency_ms} ms</small>
+              ) : null}
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="ops-grid">

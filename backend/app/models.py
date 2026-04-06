@@ -90,3 +90,15 @@ class EvaluationRunResponse(BaseModel):
     matched: int
     accuracy: float
     details: list[dict[str, Any]]
+
+
+class ServiceStatus(BaseModel):
+    name: str
+    state: str
+    detail: str
+    latency_ms: int | None = None
+
+
+class SystemStatusResponse(BaseModel):
+    overall: str
+    services: list[ServiceStatus]

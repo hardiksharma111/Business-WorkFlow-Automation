@@ -47,3 +47,10 @@ class VectorStoreService:
             )
 
         return matches
+
+    def check_health(self) -> tuple[str, str]:
+        try:
+            count = self._collection.count()
+            return "online", f"Chroma collection reachable with {count} documents."
+        except Exception as exc:
+            return "offline", f"Chroma check failed: {exc}"

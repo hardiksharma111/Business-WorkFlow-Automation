@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from typing import Any
 
 from ollama import Client
@@ -70,3 +71,23 @@ class OllamaService:
             }
         except Exception:
             return self._fallback(message)
+
+    def check_health(self) -> tuple[str, str, int | None]:
+        start = time.perf_counter()
+        try:
+            response = self._client.list()
+            elapsed_ms = int((time.perf_counter() - start) * 1000)
+
+            models = response.get("models", []) if isinstance(response, dict) else []
+            model_names = {
+                model.get("model")
+                for model in models
+                if isinstance(model, dict) and model.get("model")
+            }
+
+            if self._model in model_names:
+                return "online", f"Model {self._model} is available.", elapsed_ms
+
+            return "loading", f"Ollama reachable, but model {self._model} is not pulled yet.", elapsed_ms
+        except Exception as exc:
+            return "offline", f"Ollama not reachable: {exc}", None

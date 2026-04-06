@@ -34,8 +34,10 @@ uvicorn app.main:app --reload --port 8000
 - `GET /api/v1/system/status`
 - `GET /api/v1/system/status/history`
 - `POST /api/v1/system/warmup`
+- `GET /api/v1/system/warmup/periodic`
 - `GET /api/v1/system/ollama/models`
 - `POST /api/v1/system/ollama/pull`
+- `PUT /api/v1/system/ollama/config`
 - `POST /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/search`
 - `POST /api/v1/workflows/intake`
@@ -54,3 +56,17 @@ ollama pull llama3.2:3b
 ```
 
 You can run it from any directory in terminal, as long as the `ollama` command is installed and available in PATH.
+
+## Runtime Model Switch
+
+To switch the backend's active Ollama model without editing `.env`, call:
+
+```http
+PUT /api/v1/system/ollama/config
+```
+
+Body:
+
+```json
+{ "model": "gemma3:4b" }
+```

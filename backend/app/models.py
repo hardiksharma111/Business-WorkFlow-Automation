@@ -128,6 +128,22 @@ class OllamaPullResponse(BaseModel):
     detail: str
 
 
+class OllamaConfigRequest(BaseModel):
+    model: str = Field(min_length=1)
+
+
+class OllamaConfigResponse(BaseModel):
+    configured_model: str
+    status: str
+    detail: str
+
+
+class PeriodicWarmupResponse(BaseModel):
+    enabled: bool
+    interval_seconds: int
+    detail: str
+
+
 class ServiceStatusHistoryItem(BaseModel):
     service: str
     state: str

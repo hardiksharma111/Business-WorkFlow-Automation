@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,8 @@ from app.models import (
     EvaluationRunRequest,
     EvaluationRunResponse,
     HealthResponse,
+    OllamaConfigRequest,
+    OllamaConfigResponse,
     KnowledgeIngestRequest,
     KnowledgeSearchRequest,
     WorkflowDecision,
@@ -21,6 +25,7 @@ from app.models import (
     OllamaPullResponse,
     SystemWarmupRequest,
     SystemWarmupResponse,
+    PeriodicWarmupResponse,
     WorkflowStatusUpdateRequest,
     WorkflowTask,
 )
@@ -54,6 +59,7 @@ workflow_engine = WorkflowEngine(settings, embedding_service, vector_store, olla
 task_store = WorkflowTaskStore("./data/workflows.db")
 evaluation_service = EvaluationService(workflow_engine)
 _last_service_states: dict[str, str] = {}
+_periodic_warmup_task: asyncio.Task[None] | None = None
 
 
 def get_system_status() -> SystemStatusResponse:
@@ -95,6 +101,41 @@ def get_system_status() -> SystemStatusResponse:
         overall = "online"
 
     return SystemStatusResponse(overall=overall, services=services)
+
+
+async def periodic_warmup_loop() -> None:
+    while True:
+        try:
+            await asyncio.to_thread(ollama_service.warmup)
+            await asyncio.to_thread(embedding_service.warmup)
+            await asyncio.to_thread(get_system_status)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+
+        await asyncio.sleep(settings.warmup_interval_seconds)
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    global _periodic_warmup_task
+
+    if settings.enable_periodic_warmup and _periodic_warmup_task is None:
+        _periodic_warmup_task = asyncio.create_task(periodic_warmup_loop())
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    global _periodic_warmup_task
+
+    if _periodic_warmup_task is not None:
+        _periodic_warmup_task.cancel()
+        try:
+            await _periodic_warmup_task
+        except asyncio.CancelledError:
+            pass
+        _periodic_warmup_task = None
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -151,6 +192,27 @@ def ollama_pull(payload: OllamaPullRequest) -> OllamaPullResponse:
     target_model = payload.model or ollama_service.configured_model()
     status, detail = ollama_service.pull_model(payload.model)
     return OllamaPullResponse(model=target_model, status=status, detail=detail)
+
+
+@app.put("/api/v1/system/ollama/config", response_model=OllamaConfigResponse)
+def ollama_config(payload: OllamaConfigRequest) -> OllamaConfigResponse:
+    configured = ollama_service.set_configured_model(payload.model)
+    task_store.record_service_status("ollama_config", "online", f"Configured model switched to {configured}.")
+    return OllamaConfigResponse(
+        configured_model=configured,
+        status="online",
+        detail=f"Configured model switched to {configured}.",
+    )
+
+
+@app.get("/api/v1/system/warmup/periodic", response_model=PeriodicWarmupResponse)
+def periodic_warmup_status() -> PeriodicWarmupResponse:
+    enabled = settings.enable_periodic_warmup
+    return PeriodicWarmupResponse(
+        enabled=enabled,
+        interval_seconds=settings.warmup_interval_seconds,
+        detail="Periodic warmup is running." if enabled else "Periodic warmup is disabled.",
+    )
 
 
 @app.post("/api/v1/knowledge/documents")

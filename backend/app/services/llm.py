@@ -106,6 +106,13 @@ class OllamaService:
     def configured_model(self) -> str:
         return self._model
 
+    def set_configured_model(self, model_name: str) -> str:
+        self._model = model_name.strip()
+        return self._model
+
+    def current_model(self) -> str:
+        return self._model
+
     def list_models(self) -> list[str]:
         response = self._client.list()
         return sorted(set(self._extract_model_names(response)))

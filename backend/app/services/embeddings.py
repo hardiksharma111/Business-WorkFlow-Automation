@@ -45,3 +45,11 @@ class EmbeddingService:
             return "online", "Embedding model is loaded and responsive."
         except Exception as exc:
             return "offline", f"Embedding model error: {exc}"
+
+    def warmup(self) -> tuple[str, str]:
+        try:
+            model = self._ensure_model()
+            model.encode(["warmup ping"], normalize_embeddings=True)
+            return "online", "Embedding model warmup completed."
+        except Exception as exc:
+            return "offline", f"Embedding warmup failed: {exc}"

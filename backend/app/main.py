@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.models import (
@@ -14,6 +15,8 @@ from app.models import (
     WorkflowRunResponse,
     SystemStatusResponse,
     ServiceStatus,
+    SystemWarmupRequest,
+    SystemWarmupResponse,
     WorkflowStatusUpdateRequest,
     WorkflowTask,
 )
@@ -26,6 +29,19 @@ from app.services.vector_store import VectorStoreService
 from app.services.workflow import WorkflowEngine
 
 app = FastAPI(title="Business Workflow Automation API", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 embedding_service = EmbeddingService(settings.hf_embedding_model)
 vector_store = VectorStoreService(settings.chroma_persist_path, settings.chroma_collection)
@@ -84,6 +100,27 @@ def health() -> HealthResponse:
 @app.get("/api/v1/system/status", response_model=SystemStatusResponse)
 def system_status() -> SystemStatusResponse:
     return get_system_status()
+
+
+@app.post("/api/v1/system/warmup", response_model=SystemWarmupResponse)
+def system_warmup(payload: SystemWarmupRequest) -> SystemWarmupResponse:
+    target = payload.target.lower().strip()
+    requested = {target} if target != "all" else {"ollama", "embeddings"}
+
+    results: list[ServiceStatus] = []
+
+    if "ollama" in requested:
+        state, detail, latency = ollama_service.warmup()
+        results.append(ServiceStatus(name="ollama", state=state, detail=detail, latency_ms=latency))
+
+    if "embeddings" in requested:
+        state, detail = embedding_service.warmup()
+        results.append(ServiceStatus(name="embeddings", state=state, detail=detail, latency_ms=None))
+
+    if not results:
+        raise HTTPException(status_code=400, detail="target must be one of: all, ollama, embeddings")
+
+    return SystemWarmupResponse(target=target, results=results)
 
 
 @app.post("/api/v1/knowledge/documents")

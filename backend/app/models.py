@@ -102,3 +102,12 @@ class ServiceStatus(BaseModel):
 class SystemStatusResponse(BaseModel):
     overall: str
     services: list[ServiceStatus]
+
+
+class SystemWarmupRequest(BaseModel):
+    target: str = Field(default="all")
+
+
+class SystemWarmupResponse(BaseModel):
+    target: str
+    results: list[ServiceStatus]

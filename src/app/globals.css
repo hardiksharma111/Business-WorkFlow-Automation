@@ -668,6 +668,23 @@ a {
   gap: 10px;
 }
 
+.ops-warmup-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ops-alert-banner {
+  margin-top: 10px;
+  border: 1px solid rgba(252, 165, 165, 0.5);
+  border-radius: 12px;
+  background: rgba(252, 165, 165, 0.14);
+  color: #ffd6d6;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
 .ops-service-card {
   border: 1px solid var(--line);
   border-radius: 14px;

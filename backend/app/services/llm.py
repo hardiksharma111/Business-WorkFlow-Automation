@@ -91,3 +91,19 @@ class OllamaService:
             return "loading", f"Ollama reachable, but model {self._model} is not pulled yet.", elapsed_ms
         except Exception as exc:
             return "offline", f"Ollama not reachable: {exc}", None
+
+    def warmup(self) -> tuple[str, str, int | None]:
+        start = time.perf_counter()
+        try:
+            self._client.chat(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": "Respond with a single word: ready."},
+                    {"role": "user", "content": "warmup"},
+                ],
+                options={"temperature": 0},
+            )
+            elapsed_ms = int((time.perf_counter() - start) * 1000)
+            return "online", f"Ollama model {self._model} warmup completed.", elapsed_ms
+        except Exception as exc:
+            return "offline", f"Ollama warmup failed: {exc}", None

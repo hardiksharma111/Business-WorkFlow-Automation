@@ -31,6 +31,13 @@ type SystemStatus = {
 };
 
 const CORE_SERVICE_ORDER = ["api", "ollama", "embeddings", "chromadb", "task_store"] as const;
+type ServiceState = "online" | "loading" | "offline";
+
+type ServiceObservation = {
+  state: ServiceState;
+  lastCheckedAt: string;
+  lastChangedAt: string;
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
@@ -72,6 +79,20 @@ async function fetchSystemStatus(): Promise<SystemStatus> {
   return response.json();
 }
 
+async function triggerWarmup(target: "all" | "ollama" | "embeddings"): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/v1/system/warmup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ target })
+  });
+
+  if (!response.ok) {
+    throw new Error("Warmup request failed.");
+  }
+}
+
 function prettyLabel(value: string): string {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -88,6 +109,11 @@ export default function OperationsDashboardPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [serviceObservations, setServiceObservations] = useState<Record<string, ServiceObservation>>(
+    {}
+  );
+  const [warmupLoading, setWarmupLoading] = useState<"all" | "ollama" | "embeddings" | null>(null);
+  const [warmupMessage, setWarmupMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -122,16 +148,35 @@ export default function OperationsDashboardPage() {
   useEffect(() => {
     let mounted = true;
 
+    const updateObservations = (states: Array<{ name: string; state: ServiceState }>) => {
+      const now = new Date().toISOString();
+      setServiceObservations((previous) => {
+        const next = { ...previous };
+        for (const item of states) {
+          const existing = previous[item.name];
+          next[item.name] = {
+            state: item.state,
+            lastCheckedAt: now,
+            lastChangedAt:
+              !existing || existing.state !== item.state ? now : existing.lastChangedAt,
+          };
+        }
+        return next;
+      });
+    };
+
     const loadSystemStatus = async () => {
       try {
         const next = await fetchSystemStatus();
         if (mounted) {
           setSystemStatus(next);
           setStatusError(null);
+          updateObservations(next.services.map((service) => ({ name: service.name, state: service.state })));
         }
       } catch (err) {
         if (mounted) {
           setStatusError(err instanceof Error ? err.message : "Failed to load status.");
+          updateObservations(CORE_SERVICE_ORDER.map((name) => ({ name, state: "offline" as const })));
         }
       }
     };
@@ -261,6 +306,23 @@ export default function OperationsDashboardPage() {
       ? "offline"
       : "loading";
 
+  const offlineServices = displayedServices.filter((service) => service.state === "offline");
+
+  const runWarmup = async (target: "all" | "ollama" | "embeddings") => {
+    setWarmupLoading(target);
+    setWarmupMessage(null);
+    try {
+      await triggerWarmup(target);
+      setWarmupMessage(`Warmup completed for ${prettyLabel(target)}.`);
+      const latest = await fetchSystemStatus();
+      setSystemStatus(latest);
+    } catch (err) {
+      setWarmupMessage(err instanceof Error ? err.message : "Warmup failed.");
+    } finally {
+      setWarmupLoading(null);
+    }
+  };
+
   return (
     <main className="ops-shell">
       <section className="ops-hero">
@@ -347,6 +409,40 @@ export default function OperationsDashboardPage() {
           Service states: green = online, yellow = loading/waiting, red = offline.
         </p>
         {statusError ? <p className="ops-error">{statusError}</p> : null}
+        {warmupMessage ? <p className="ops-note">{warmupMessage}</p> : null}
+
+        {offlineServices.length ? (
+          <div className="ops-alert-banner">
+            Attention: {offlineServices.map((service) => prettyLabel(service.name)).join(", ")} are offline.
+          </div>
+        ) : null}
+
+        <div className="ops-warmup-actions">
+          <button
+            type="button"
+            className="ops-action complete"
+            onClick={() => runWarmup("all")}
+            disabled={warmupLoading !== null}
+          >
+            {warmupLoading === "all" ? "Warming Up..." : "Warmup All"}
+          </button>
+          <button
+            type="button"
+            className="ops-action"
+            onClick={() => runWarmup("ollama")}
+            disabled={warmupLoading !== null}
+          >
+            {warmupLoading === "ollama" ? "Warming..." : "Warmup Ollama"}
+          </button>
+          <button
+            type="button"
+            className="ops-action"
+            onClick={() => runWarmup("embeddings")}
+            disabled={warmupLoading !== null}
+          >
+            {warmupLoading === "embeddings" ? "Warming..." : "Warmup Embeddings"}
+          </button>
+        </div>
 
         <div className="ops-service-grid">
           {displayedServices.map((service) => (
@@ -362,6 +458,16 @@ export default function OperationsDashboardPage() {
               {typeof service.latency_ms === "number" ? (
                 <small>Latency: {service.latency_ms} ms</small>
               ) : null}
+              <small>
+                Last checked: {serviceObservations[service.name]?.lastCheckedAt
+                  ? new Date(serviceObservations[service.name].lastCheckedAt).toLocaleTimeString()
+                  : "--"}
+              </small>
+              <small>
+                Last changed: {serviceObservations[service.name]?.lastChangedAt
+                  ? new Date(serviceObservations[service.name].lastChangedAt).toLocaleTimeString()
+                  : "--"}
+              </small>
             </article>
           ))}
         </div>

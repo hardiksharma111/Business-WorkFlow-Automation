@@ -2,6 +2,44 @@
 
 A polished Next.js template for business workflow automation products and service pages.
 
+## Start Here
+
+- Main project brief: `PROJECT_BLUEPRINT.md`
+
+## Implementation Status
+
+- Frontend: Next.js landing page template is implemented.
+- Backend: FastAPI MVP has been added in `backend/` with Ollama, Hugging Face embeddings, and ChromaDB integration.
+
+## Backend Quick Start
+
+1. Open `backend/`.
+2. Create a Python virtual environment and activate it.
+3. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Copy env values:
+
+```bash
+cp .env.example .env
+```
+
+5. Run API:
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+## Backend Endpoints
+
+- `GET /health`
+- `POST /api/v1/knowledge/documents`
+- `POST /api/v1/knowledge/search`
+- `POST /api/v1/workflows/intake`
+
 ## Stack
 
 - Next.js 16

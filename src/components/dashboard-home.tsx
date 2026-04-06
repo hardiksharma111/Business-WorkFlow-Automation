@@ -193,11 +193,10 @@ export default function DashboardHome() {
 
     const load = async () => {
       try {
-        const [status, nextTasks, nextHistory, nextAnalytics, nextModels] = await Promise.all([
+        const [status, nextTasks, nextHistory, nextModels] = await Promise.all([
           fetchJson<SystemStatus>(`${API_BASE}/api/v1/system/status`),
           fetchJson<WorkflowTask[]>(`${API_BASE}/api/v1/workflows/tasks?limit=8`),
           fetchJson<ServiceHistoryItem[]>(`${API_BASE}/api/v1/system/status/history?limit=8`),
-          fetchJson<WorkflowAnalyticsResponse>(`${API_BASE}/api/v1/analytics/overview?limit=50`),
           fetchJson<OllamaModelsResponse>(`${API_BASE}/api/v1/system/ollama/models`)
         ]);
 
@@ -205,7 +204,6 @@ export default function DashboardHome() {
           setSystemStatus(status);
           setTasks(nextTasks);
           setHistory(nextHistory);
-          setAnalytics(nextAnalytics);
           setOllamaModels(nextModels);
           setError(null);
         }
@@ -216,6 +214,17 @@ export default function DashboardHome() {
       } finally {
         if (mounted) {
           setLoading(false);
+        }
+      }
+
+      try {
+        const nextAnalytics = await fetchJson<WorkflowAnalyticsResponse>(`${API_BASE}/api/v1/analytics/overview?limit=50`);
+        if (mounted) {
+          setAnalytics(nextAnalytics);
+        }
+      } catch {
+        if (mounted) {
+          setAnalytics(null);
         }
       }
     };

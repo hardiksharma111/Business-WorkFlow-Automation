@@ -378,4 +378,5 @@ def run_evaluation(payload: EvaluationRunRequest) -> EvaluationRunResponse:
 
 @app.get("/api/v1/analytics/overview", response_model=WorkflowAnalyticsResponse)
 def analytics_overview(limit: int = 50) -> WorkflowAnalyticsResponse:
+    limit = max(1, min(limit, 100))
     return WorkflowAnalyticsResponse(**task_store.get_task_analytics(limit=limit))

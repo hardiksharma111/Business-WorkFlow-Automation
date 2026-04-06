@@ -20,6 +20,7 @@ A polished Next.js template for business workflow automation products and servic
 - 2026-04-07: Updated dashboard UI to use normal AI chat path and show negotiation details only when triggered.
 - 2026-04-07: Completed Phase 2 execution layer with step-by-step workflow execution, fallback actions, and status updates for `intake-and-create` and connector ingestion.
 - 2026-04-07: Started Phase 3 observability with workflow analytics and dashboard telemetry panels.
+- 2026-04-07: Hardened Phase 3 analytics limits so telemetry endpoints stay bounded.
 
 ## Frontend API Integration
 

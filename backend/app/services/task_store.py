@@ -214,6 +214,7 @@ class WorkflowTaskStore:
         ]
 
     def get_task_analytics(self, limit: int = 50) -> dict[str, object]:
+        limit = max(1, min(limit, 100))
         tasks = self.list_tasks(limit=limit)
 
         total_tasks = len(tasks)

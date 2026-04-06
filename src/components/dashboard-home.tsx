@@ -45,6 +45,30 @@ type ServiceHistoryItem = {
   changed_at: string;
 };
 
+type AnalyticsBucket = {
+  label: string;
+  value: number;
+};
+
+type WorkflowAnalyticsResponse = {
+  total_tasks: number;
+  completed_tasks: number;
+  partial_tasks: number;
+  failed_tasks: number;
+  pending_tasks: number;
+  auto_executed_tasks: number;
+  human_review_tasks: number;
+  negotiation_runs: number;
+  negotiation_fallbacks: number;
+  execution_fallback_steps: number;
+  avg_confidence: number;
+  confidence_trend: number[];
+  top_intents: AnalyticsBucket[];
+  source_mix: AnalyticsBucket[];
+  execution_mix: AnalyticsBucket[];
+  recent_failures: string[];
+};
+
 type OllamaModelsResponse = {
   configured_model: string;
   models: string[];
@@ -153,6 +177,7 @@ export default function DashboardHome() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [tasks, setTasks] = useState<WorkflowTask[]>([]);
   const [history, setHistory] = useState<ServiceHistoryItem[]>([]);
+  const [analytics, setAnalytics] = useState<WorkflowAnalyticsResponse | null>(null);
   const [ollamaModels, setOllamaModels] = useState<OllamaModelsResponse | null>(null);
   const [negotiationMessage, setNegotiationMessage] = useState(
     "Need a wholesale seller that can negotiate on pricing, timeline, and a backup option if the first offer fails."
@@ -168,10 +193,11 @@ export default function DashboardHome() {
 
     const load = async () => {
       try {
-        const [status, nextTasks, nextHistory, nextModels] = await Promise.all([
+        const [status, nextTasks, nextHistory, nextAnalytics, nextModels] = await Promise.all([
           fetchJson<SystemStatus>(`${API_BASE}/api/v1/system/status`),
           fetchJson<WorkflowTask[]>(`${API_BASE}/api/v1/workflows/tasks?limit=8`),
           fetchJson<ServiceHistoryItem[]>(`${API_BASE}/api/v1/system/status/history?limit=8`),
+          fetchJson<WorkflowAnalyticsResponse>(`${API_BASE}/api/v1/analytics/overview?limit=50`),
           fetchJson<OllamaModelsResponse>(`${API_BASE}/api/v1/system/ollama/models`)
         ]);
 
@@ -179,6 +205,7 @@ export default function DashboardHome() {
           setSystemStatus(status);
           setTasks(nextTasks);
           setHistory(nextHistory);
+          setAnalytics(nextAnalytics);
           setOllamaModels(nextModels);
           setError(null);
         }
@@ -216,6 +243,7 @@ export default function DashboardHome() {
   const pulseValue = Math.min(100, Math.max(25, Math.round((metrics.avgConfidence || 0.25) * 100)));
   const services = systemStatus?.services ?? [];
   const activeWorkspace = workspaceOptions.find((option) => option.value === workspace) ?? workspaceOptions[0];
+  const analyticsSeries = analytics?.confidence_trend ?? [];
 
   const handleNegotiationSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -514,6 +542,58 @@ export default function DashboardHome() {
           <span className="panel-tag">Navigation</span>
           <h3>Dropdown-driven</h3>
           <p>Switch between command center, flow, health, and model lab.</p>
+        </article>
+      </section>
+
+      <section className="phase-three-grid">
+        <article className="workspace-panel analytics-panel">
+          <span className="panel-tag">Phase 3 observability</span>
+          <h3>Execution, fallback, and confidence telemetry</h3>
+          <div className="analytics-metrics">
+            <div><span>Total</span><strong>{analytics?.total_tasks ?? 0}</strong></div>
+            <div><span>Completed</span><strong>{analytics?.completed_tasks ?? 0}</strong></div>
+            <div><span>Partial</span><strong>{analytics?.partial_tasks ?? 0}</strong></div>
+            <div><span>Failed</span><strong>{analytics?.failed_tasks ?? 0}</strong></div>
+            <div><span>Negotiate</span><strong>{analytics?.negotiation_runs ?? 0}</strong></div>
+            <div><span>Fallbacks</span><strong>{analytics?.execution_fallback_steps ?? 0}</strong></div>
+          </div>
+          <div className="sparkline-row">
+            {analyticsSeries.length ? analyticsSeries.map((value, index) => <span key={`${value}-${index}`} style={{ height: `${Math.max(12, value * 100)}%` }} />) : <span className="sparkline-empty" />}
+          </div>
+          {analytics?.recent_failures?.length ? (
+            <div className="failure-list">
+              {analytics.recent_failures.map((failure) => (
+                <p key={failure}>{failure}</p>
+              ))}
+            </div>
+          ) : (
+            <p className="negotiation-empty">No execution failures in the current window.</p>
+          )}
+        </article>
+
+        <article className="workspace-panel analytics-panel">
+          <span className="panel-tag">Distribution</span>
+          <h3>Top intents and sources</h3>
+          <div className="bucket-columns">
+            <div>
+              <h4>Intents</h4>
+              {(analytics?.top_intents ?? []).map((bucket) => (
+                <div key={bucket.label} className="bucket-row"><strong>{bucket.label}</strong><span>{bucket.value}</span></div>
+              ))}
+            </div>
+            <div>
+              <h4>Sources</h4>
+              {(analytics?.source_mix ?? []).map((bucket) => (
+                <div key={bucket.label} className="bucket-row"><strong>{bucket.label}</strong><span>{bucket.value}</span></div>
+              ))}
+            </div>
+            <div>
+              <h4>Execution</h4>
+              {(analytics?.execution_mix ?? []).map((bucket) => (
+                <div key={bucket.label} className="bucket-row"><strong>{bucket.label}</strong><span>{bucket.value}</span></div>
+              ))}
+            </div>
+          </div>
         </article>
       </section>
 

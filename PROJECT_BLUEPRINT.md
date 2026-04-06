@@ -124,6 +124,7 @@ This dashboard is designed to be the command center for operational trust, not j
 - Add confidence scoring and fallback policies.
 - Introduce analytics for throughput, cycle time, and intervention rate.
 - Expand integrations (email, CRM, ticketing, messaging).
+- Add prompt/model observability and execution telemetry dashboards.
 
 ## 8. Success Metrics
 
@@ -160,3 +161,4 @@ Every workflow should include timeout, escalation owner, and retry strategy.
 - This repository currently contains the frontend template and project direction.
 - Backend orchestration, connectors, and model service hardening are the next active implementation tracks.
 - The active build now includes a LangGraph-backed negotiation flow, WhatsApp Chrome-extension style chat intake, and online seller referral fallback.
+- Phase 3 now focuses on observability: analytics, telemetry, and confidence/fallback reporting across backend and frontend.

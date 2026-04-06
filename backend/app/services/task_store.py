@@ -212,3 +212,69 @@ class WorkflowTaskStore:
             }
             for row in rows
         ]
+
+    def get_task_analytics(self, limit: int = 50) -> dict[str, object]:
+        tasks = self.list_tasks(limit=limit)
+
+        total_tasks = len(tasks)
+        completed_tasks = sum(1 for task in tasks if task.status == "completed")
+        partial_tasks = sum(1 for task in tasks if task.status == "partial")
+        failed_tasks = sum(1 for task in tasks if task.status == "failed")
+        pending_tasks = sum(1 for task in tasks if task.status == "pending_human")
+        auto_executed_tasks = sum(1 for task in tasks if task.status == "auto_executed")
+        human_review_tasks = sum(1 for task in tasks if task.requires_human_approval)
+        negotiation_runs = sum(1 for task in tasks if task.metadata.get("route") == "negotiation" or "negotiation" in task.metadata)
+        negotiation_fallbacks = sum(
+            1 for task in tasks if isinstance(task.metadata.get("negotiation"), dict) and task.metadata["negotiation"].get("fallback_reason")
+        )
+
+        confidence_values = [task.confidence for task in tasks]
+        confidence_trend = list(reversed(confidence_values[:10]))
+
+        top_intents = self._bucketize([task.intent for task in tasks])
+        source_mix = self._bucketize([task.source for task in tasks])
+
+        execution_labels: list[str] = []
+        execution_fallback_steps = 0
+        recent_failures: list[str] = []
+        for task in tasks:
+            execution = task.metadata.get("execution")
+            if isinstance(execution, dict):
+                execution_labels.append(str(execution.get("final_status", "unknown")))
+                for step in execution.get("steps", []):
+                    if isinstance(step, dict) and step.get("used_fallback"):
+                        execution_fallback_steps += 1
+                if execution.get("final_status") == "failed":
+                    recent_failures.append(str(execution.get("summary", task.intent)))
+            elif task.status in {"completed", "partial", "failed"}:
+                execution_labels.append(task.status)
+
+        execution_mix = self._bucketize(execution_labels)
+
+        return {
+            "total_tasks": total_tasks,
+            "completed_tasks": completed_tasks,
+            "partial_tasks": partial_tasks,
+            "failed_tasks": failed_tasks,
+            "pending_tasks": pending_tasks,
+            "auto_executed_tasks": auto_executed_tasks,
+            "human_review_tasks": human_review_tasks,
+            "negotiation_runs": negotiation_runs,
+            "negotiation_fallbacks": negotiation_fallbacks,
+            "execution_fallback_steps": execution_fallback_steps,
+            "avg_confidence": round(sum(confidence_values) / total_tasks, 4) if confidence_values else 0.0,
+            "confidence_trend": confidence_trend,
+            "top_intents": top_intents,
+            "source_mix": source_mix,
+            "execution_mix": execution_mix,
+            "recent_failures": recent_failures[:5],
+        }
+
+    def _bucketize(self, values: list[str]) -> list[dict[str, object]]:
+        counts: dict[str, int] = {}
+        for value in values:
+            key = str(value)
+            counts[key] = counts.get(key, 0) + 1
+
+        items = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        return [{"label": label, "value": count} for label, count in items[:6]]

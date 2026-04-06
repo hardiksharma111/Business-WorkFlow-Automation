@@ -59,6 +59,30 @@ class WorkflowExecutionResult(BaseModel):
     summary: str
 
 
+class WorkflowAnalyticsBucket(BaseModel):
+    label: str
+    value: int
+
+
+class WorkflowAnalyticsResponse(BaseModel):
+    total_tasks: int
+    completed_tasks: int
+    partial_tasks: int
+    failed_tasks: int
+    pending_tasks: int
+    auto_executed_tasks: int
+    human_review_tasks: int
+    negotiation_runs: int
+    negotiation_fallbacks: int
+    execution_fallback_steps: int
+    avg_confidence: float
+    confidence_trend: list[float]
+    top_intents: list[WorkflowAnalyticsBucket]
+    source_mix: list[WorkflowAnalyticsBucket]
+    execution_mix: list[WorkflowAnalyticsBucket]
+    recent_failures: list[str]
+
+
 class HealthResponse(BaseModel):
     status: str
     services: dict[str, bool]

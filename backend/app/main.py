@@ -16,6 +16,7 @@ from app.models import (
     KnowledgeIngestRequest,
     KnowledgeSearchRequest,
     NegotiationRunResponse,
+    WorkflowAnalyticsResponse,
     WorkflowDecision,
     WorkflowIntakeRequest,
     WorkflowRunResponse,
@@ -373,3 +374,8 @@ def ingest_from_connector(connector: str, payload: ConnectorIngestRequest) -> Wo
 @app.post("/api/v1/evaluation/run", response_model=EvaluationRunResponse)
 def run_evaluation(payload: EvaluationRunRequest) -> EvaluationRunResponse:
     return evaluation_service.run(payload)
+
+
+@app.get("/api/v1/analytics/overview", response_model=WorkflowAnalyticsResponse)
+def analytics_overview(limit: int = 50) -> WorkflowAnalyticsResponse:
+    return WorkflowAnalyticsResponse(**task_store.get_task_analytics(limit=limit))

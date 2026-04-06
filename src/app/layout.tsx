@@ -13,9 +13,9 @@ const bodyFont = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "FlowPilot | Business Workflow Automation",
+  title: "Blue Control Room | Business Workflow Automation",
   description:
-    "A modern template for automating business operations, approvals, and team handoffs with clarity and control."
+    "A from-scratch blue workflow control room for task routing, backend telemetry, and negotiation handling."
 };
 
 export default function RootLayout({

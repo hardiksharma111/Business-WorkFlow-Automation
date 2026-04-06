@@ -269,7 +269,22 @@ def workflow_intake(payload: WorkflowIntakeRequest) -> WorkflowDecision:
 def workflow_intake_and_create(payload: WorkflowIntakeRequest) -> WorkflowRunResponse:
     decision = workflow_engine.process(payload)
     task = task_store.create_task(payload, decision)
-    return WorkflowRunResponse(task=task, decision=decision)
+
+    execution = None
+    if not decision.requires_human_approval:
+        execution = workflow_engine.execute(decision, payload.metadata)
+        status_map = {
+            "completed": "completed",
+            "partial": "pending_human",
+            "failed": "failed",
+        }
+        task = task_store.update_task(
+            task.id,
+            status=status_map.get(execution.final_status, task.status),
+            metadata={"execution": execution.model_dump()},
+        ) or task
+
+    return WorkflowRunResponse(task=task, decision=decision, execution=execution)
 
 
 @app.post("/api/v1/chat", response_model=ChatRunResponse)
@@ -337,7 +352,22 @@ def ingest_from_connector(connector: str, payload: ConnectorIngestRequest) -> Wo
     intake = to_workflow_intake(connector, payload)
     decision = workflow_engine.process(intake)
     task = task_store.create_task(intake, decision)
-    return WorkflowRunResponse(task=task, decision=decision)
+
+    execution = None
+    if not decision.requires_human_approval:
+        execution = workflow_engine.execute(decision, intake.metadata)
+        status_map = {
+            "completed": "completed",
+            "partial": "pending_human",
+            "failed": "failed",
+        }
+        task = task_store.update_task(
+            task.id,
+            status=status_map.get(execution.final_status, task.status),
+            metadata={"execution": execution.model_dump()},
+        ) or task
+
+    return WorkflowRunResponse(task=task, decision=decision, execution=execution)
 
 
 @app.post("/api/v1/evaluation/run", response_model=EvaluationRunResponse)

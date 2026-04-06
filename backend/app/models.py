@@ -41,6 +41,24 @@ class WorkflowDecision(BaseModel):
     retrieved_context: list[KnowledgeMatch]
 
 
+class WorkflowStepResult(BaseModel):
+    name: str
+    action: str
+    status: str
+    note: str
+    used_fallback: bool = False
+
+
+class WorkflowExecutionResult(BaseModel):
+    workflow: str
+    final_status: str
+    started_at: str
+    ended_at: str
+    used_alternative_path: bool
+    steps: list[WorkflowStepResult]
+    summary: str
+
+
 class HealthResponse(BaseModel):
     status: str
     services: dict[str, bool]
@@ -70,6 +88,7 @@ class WorkflowTask(BaseModel):
 class WorkflowRunResponse(BaseModel):
     task: WorkflowTask
     decision: WorkflowDecision
+    execution: WorkflowExecutionResult | None = None
 
 
 class SellerLead(BaseModel):

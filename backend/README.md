@@ -62,6 +62,15 @@ It will:
 - search online for new seller referrals if the local seller pool is thin,
 - return the selected seller, alternatives, and fallback path in one response.
 
+## Phase 2 Execution (Completed)
+
+`POST /api/v1/workflows/intake-and-create` and `POST /api/v1/connectors/{connector}/ingest` now run a workflow execution layer for auto-executable tasks.
+
+- Supports approval, procurement, escalation, and general workflows.
+- Executes multiple steps per workflow.
+- Uses fallback actions when a primary step fails.
+- Persists execution summary in task metadata and updates task status (`completed`, `pending_human`, or `failed`).
+
 ## Ollama Local Pull
 
 Run this on the same machine where the backend API is running (your local Windows PC in this setup):

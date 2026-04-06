@@ -130,6 +130,31 @@ class WorkflowTaskStore:
 
         return self._row_to_task(row) if row else None
 
+    def update_task(self, task_id: str, *, status: str | None = None, metadata: dict[str, object] | None = None) -> WorkflowTask | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM workflow_tasks WHERE id = ?", (task_id,)).fetchone()
+            if not row:
+                return None
+
+            next_status = status or str(row["status"])
+            next_metadata = json.loads(row["metadata"])
+            if metadata:
+                next_metadata.update(metadata)
+
+            now = datetime.now(UTC).isoformat()
+            connection.execute(
+                """
+                UPDATE workflow_tasks
+                SET status = ?, metadata = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (next_status, json.dumps(next_metadata), now, task_id),
+            )
+
+            updated_row = connection.execute("SELECT * FROM workflow_tasks WHERE id = ?", (task_id,)).fetchone()
+
+        return self._row_to_task(updated_row) if updated_row else None
+
     def _row_to_task(self, row: sqlite3.Row) -> WorkflowTask:
         return WorkflowTask(
             id=row["id"],

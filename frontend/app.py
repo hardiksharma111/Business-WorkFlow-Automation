@@ -2,97 +2,77 @@ import streamlit as st
 import base64
 import os
 
-# 1. Page Configuration
+# Page Config
 st.set_page_config(page_title="Synova | Nexus", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. Logo Loading (Main directory se logo.png uthayega)
-def get_base64_logo(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
-
-logo_base64 = get_base64_logo("logo.png")
-
-# 3. Custom CSS (Image 4 ke shading aur rounded box par based)
-st.markdown(f"""
+# UI Styling
+st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
 
-    /* Background with deep radial gradient */
-    .stApp {{
+    .stApp {
         background: radial-gradient(circle at center, #1e293b 0%, #0f172a 60%, #020617 100%) !important;
-        color: #f8fafc;
         font-family: 'Plus Jakarta Sans', sans-serif;
-    }}
+    }
 
-    /* Hiding default Streamlit elements */
-    header, footer, [data-testid="stSidebarNav"] {{ visibility: hidden; }}
+    header, footer, [data-testid="stSidebarNav"] { visibility: hidden; }
 
-    /* Centered Login Card */
-    .login-card {{
-        background: rgba(30, 41, 59, 0.4);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 30px;
-        padding: 60px;
+    /* Login Card */
+    .login-card {
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(15px);
+        border: 2px solid #3b82f6;
+        border-radius: 25px;
+        padding: 50px;
         max-width: 450px;
-        margin: 120px auto;
+        margin: 80px auto;
         text-align: center;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-    }}
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+    }
 
-    .hero-text {{
-        font-size: 52px;
-        font-weight: 800;
-        background: linear-gradient(to bottom right, #ffffff, #94a3b8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 20px;
-    }}
+    /* Input Box Visibility Fix */
+    div[data-baseweb="input"] {
+        background-color: #0f172a !important;
+        border: 1px solid #3b82f6 !important;
+        border-radius: 8px !important;
+    }
 
-    /* Professional Blue Buttons */
-    .stButton > button {{
+    input {
+        color: #ffffff !important;
+        caret-color: #3b82f6 !important;
+    }
+
+    label { color: #94a3b8 !important; font-weight: 600 !important; }
+
+    /* Action Button */
+    .stButton > button {
         background: linear-gradient(90deg, #3b82f6, #a855f7) !important;
-        border-radius: 12px !important;
         color: white !important;
-        font-weight: 700;
-        padding: 12px 0 !important;
+        border: none !important;
         width: 100%;
-        border: none;
-        transition: 0.3s ease;
-    }}
-
-    /* Input box styling */
-    input[type="text"], input[type="password"] {{
-        background: rgba(15, 23, 42, 0.8) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        color: white !important;
-        border-radius: 10px !important;
-    }}
+        height: 50px;
+        border-radius: 12px;
+        font-weight: 800;
+        margin-top: 20px;
+        cursor: pointer;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- UI LAYOUT ---
+# Layout
 st.markdown('<div class="login-card">', unsafe_allow_html=True)
+st.markdown('<h1 style="color:white; margin-bottom:5px;">Synova</h1>', unsafe_allow_html=True)
+st.markdown('<p style="color:#64748b; font-size:14px;">Nexus Authorization Required</p>', unsafe_allow_html=True)
+st.markdown('<div style="margin-bottom:30px;"></div>', unsafe_allow_html=True)
 
-# Logo Display
-if logo_base64:
-    st.markdown(f'<img src="data:image/png;base64,{logo_base64}" style="width:70px; margin-bottom:20px;">', unsafe_allow_html=True)
-else:
-    st.markdown('<div style="font-size:40px; margin-bottom:20px;">💠</div>', unsafe_allow_html=True)
-
-st.markdown('<div class="hero-text">Synova</div>', unsafe_allow_html=True)
-st.markdown('<p style="color:#94a3b8; margin-bottom:40px;">Enter your credentials to initialize Nexus.</p>', unsafe_allow_html=True)
-
-# Inputs
-user_id = st.text_input("Wizard ID", placeholder="Ex: WIZ-01", label_visibility="collapsed")
-cipher = st.text_input("Access Cipher", type="password", placeholder="••••••••", label_visibility="collapsed")
-
-st.write("") # Spacer
+# Visible Inputs
+wiz_id = st.text_input("Enter Wizard ID", placeholder="e.g. WIZ-001")
+cipher = st.text_input("Enter Access Cipher", type="password", placeholder="••••••••")
 
 if st.button("Initialize Nexus"):
-    # Ye user ko Dashboard page par le jayega
-    st.switch_page("pages/1_Dashboard.py")
+    if wiz_id and cipher:
+        st.switch_page("pages/1_Dashboard.py")
+    else:
+        st.warning("Please enter credentials.")
 
 st.markdown('</div>', unsafe_allow_html=True)

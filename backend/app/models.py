@@ -111,3 +111,25 @@ class SystemWarmupRequest(BaseModel):
 class SystemWarmupResponse(BaseModel):
     target: str
     results: list[ServiceStatus]
+
+
+class OllamaModelListResponse(BaseModel):
+    configured_model: str
+    models: list[str]
+
+
+class OllamaPullRequest(BaseModel):
+    model: str | None = None
+
+
+class OllamaPullResponse(BaseModel):
+    model: str
+    status: str
+    detail: str
+
+
+class ServiceStatusHistoryItem(BaseModel):
+    service: str
+    state: str
+    detail: str
+    changed_at: str

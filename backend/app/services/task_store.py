@@ -41,6 +41,17 @@ class WorkflowTaskStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS service_status_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    service TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    detail TEXT NOT NULL,
+                    changed_at TEXT NOT NULL
+                )
+                """
+            )
 
     def create_task(self, request: WorkflowIntakeRequest, decision: WorkflowDecision) -> WorkflowTask:
         now = datetime.now(UTC).isoformat()
@@ -143,3 +154,36 @@ class WorkflowTaskStore:
             return "online", f"Task store reachable with {count} tasks."
         except Exception as exc:
             return "offline", f"Task store error: {exc}"
+
+    def record_service_status(self, service: str, state: str, detail: str) -> None:
+        now = datetime.now(UTC).isoformat()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO service_status_history (service, state, detail, changed_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (service, state, detail, now),
+            )
+
+    def get_service_status_history(self, limit: int = 100) -> list[dict[str, str]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT service, state, detail, changed_at
+                FROM service_status_history
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+
+        return [
+            {
+                "service": str(row["service"]),
+                "state": str(row["state"]),
+                "detail": str(row["detail"]),
+                "changed_at": str(row["changed_at"]),
+            }
+            for row in rows
+        ]

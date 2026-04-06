@@ -15,6 +15,10 @@ from app.models import (
     WorkflowRunResponse,
     SystemStatusResponse,
     ServiceStatus,
+    ServiceStatusHistoryItem,
+    OllamaModelListResponse,
+    OllamaPullRequest,
+    OllamaPullResponse,
     SystemWarmupRequest,
     SystemWarmupResponse,
     WorkflowStatusUpdateRequest,
@@ -49,6 +53,7 @@ ollama_service = OllamaService(settings.ollama_host, settings.ollama_model)
 workflow_engine = WorkflowEngine(settings, embedding_service, vector_store, ollama_service)
 task_store = WorkflowTaskStore("./data/workflows.db")
 evaluation_service = EvaluationService(workflow_engine)
+_last_service_states: dict[str, str] = {}
 
 
 def get_system_status() -> SystemStatusResponse:
@@ -74,6 +79,12 @@ def get_system_status() -> SystemStatusResponse:
         ServiceStatus(name="chromadb", state=chroma_state, detail=chroma_detail),
         ServiceStatus(name="task_store", state=task_store_state, detail=task_store_detail),
     ]
+
+    for service in services:
+        previous = _last_service_states.get(service.name)
+        if previous != service.state:
+            task_store.record_service_status(service.name, service.state, service.detail)
+            _last_service_states[service.name] = service.state
 
     states = {service.state for service in services}
     if "offline" in states:
@@ -121,6 +132,25 @@ def system_warmup(payload: SystemWarmupRequest) -> SystemWarmupResponse:
         raise HTTPException(status_code=400, detail="target must be one of: all, ollama, embeddings")
 
     return SystemWarmupResponse(target=target, results=results)
+
+
+@app.get("/api/v1/system/status/history", response_model=list[ServiceStatusHistoryItem])
+def system_status_history(limit: int = 100) -> list[ServiceStatusHistoryItem]:
+    records = task_store.get_service_status_history(limit=limit)
+    return [ServiceStatusHistoryItem(**record) for record in records]
+
+
+@app.get("/api/v1/system/ollama/models", response_model=OllamaModelListResponse)
+def ollama_models() -> OllamaModelListResponse:
+    models = ollama_service.list_models()
+    return OllamaModelListResponse(configured_model=ollama_service.configured_model(), models=models)
+
+
+@app.post("/api/v1/system/ollama/pull", response_model=OllamaPullResponse)
+def ollama_pull(payload: OllamaPullRequest) -> OllamaPullResponse:
+    target_model = payload.model or ollama_service.configured_model()
+    status, detail = ollama_service.pull_model(payload.model)
+    return OllamaPullResponse(model=target_model, status=status, detail=detail)
 
 
 @app.post("/api/v1/knowledge/documents")

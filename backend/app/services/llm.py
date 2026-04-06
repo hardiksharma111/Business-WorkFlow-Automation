@@ -107,3 +107,24 @@ class OllamaService:
             return "online", f"Ollama model {self._model} warmup completed.", elapsed_ms
         except Exception as exc:
             return "offline", f"Ollama warmup failed: {exc}", None
+
+    def configured_model(self) -> str:
+        return self._model
+
+    def list_models(self) -> list[str]:
+        response = self._client.list()
+        models = response.get("models", []) if isinstance(response, dict) else []
+        names = [
+            str(model.get("model"))
+            for model in models
+            if isinstance(model, dict) and model.get("model")
+        ]
+        return sorted(set(names))
+
+    def pull_model(self, model_name: str | None = None) -> tuple[str, str]:
+        target = model_name or self._model
+        try:
+            self._client.pull(model=target, stream=False)
+            return "online", f"Model {target} pulled successfully."
+        except Exception as exc:
+            return "offline", f"Failed to pull model {target}: {exc}"

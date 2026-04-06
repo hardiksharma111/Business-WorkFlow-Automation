@@ -6,6 +6,7 @@ This backend provides a starter implementation for:
 - Embedding generation using a Hugging Face model
 - Semantic memory and retrieval using ChromaDB
 - Confidence-based workflow decisioning
+- LangGraph negotiation routing with fallback seller referral
 
 ## Quick Start
 
@@ -40,12 +41,26 @@ uvicorn app.main:app --reload --port 8000
 - `PUT /api/v1/system/ollama/config`
 - `POST /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/search`
+- `POST /api/v1/chat`
 - `POST /api/v1/workflows/intake`
 - `POST /api/v1/workflows/intake-and-create`
+- `POST /api/v1/negotiation/chat`
 - `GET /api/v1/workflows/tasks`
 - `PATCH /api/v1/workflows/tasks/{task_id}`
 - `POST /api/v1/connectors/{connector}/ingest`
 - `POST /api/v1/evaluation/run`
+
+## Negotiation Flow
+
+The negotiation endpoint is designed for messages coming from a WhatsApp Chrome extension or other chat source.
+
+It will:
+
+- classify the request with the workflow engine,
+- look for local seller matches first,
+- draft a negotiation reply with LangGraph,
+- search online for new seller referrals if the local seller pool is thin,
+- return the selected seller, alternatives, and fallback path in one response.
 
 ## Ollama Local Pull
 

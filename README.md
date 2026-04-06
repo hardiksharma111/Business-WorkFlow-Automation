@@ -8,9 +8,16 @@ A polished Next.js template for business workflow automation products and servic
 
 ## Implementation Status
 
-- Frontend: Next.js landing page template is implemented.
-- Backend: FastAPI MVP has been added in `backend/` with Ollama, Hugging Face embeddings, and ChromaDB integration.
+- Frontend: Next.js dashboard home is implemented with a live AI chat console.
+- Backend: FastAPI MVP has been added in `backend/` with Ollama, Hugging Face embeddings, ChromaDB, and LangGraph negotiation routing.
 - Operations Dashboard: Live monitoring page is available at `/operations`.
+- Chat Intake: The home dashboard now sends WhatsApp Chrome-extension style messages to the AI chat API, and negotiation activates only when needed.
+
+## Progress Snapshot
+
+- 2026-04-07: Added LangGraph negotiation flow with local-seller-first and online referral fallback.
+- 2026-04-07: Added `POST /api/v1/chat` as the default AI route with conditional negotiation fallback.
+- 2026-04-07: Updated dashboard UI to use normal AI chat path and show negotiation details only when triggered.
 
 ## Frontend API Integration
 
@@ -46,6 +53,8 @@ uvicorn app.main:app --reload --port 8000
 ## Backend Endpoints
 
 - `GET /health`
+- `POST /api/v1/chat`
+- `POST /api/v1/negotiation/chat`
 - `POST /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/search`
 - `POST /api/v1/workflows/intake`

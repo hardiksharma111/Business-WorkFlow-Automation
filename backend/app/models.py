@@ -72,6 +72,43 @@ class WorkflowRunResponse(BaseModel):
     decision: WorkflowDecision
 
 
+class SellerLead(BaseModel):
+    name: str
+    category: str
+    summary: str
+    origin: str
+    url: str | None = None
+    contact: str | None = None
+    confidence: float = 0.0
+
+
+class NegotiationOutcome(BaseModel):
+    reply: str
+    strategy: str
+    selected_seller: SellerLead | None = None
+    local_sellers: list[SellerLead] = Field(default_factory=list)
+    online_sellers: list[SellerLead] = Field(default_factory=list)
+    fallback_reason: str | None = None
+    alternative_path: str
+    trace: list[str] = Field(default_factory=list)
+    error_notes: list[str] = Field(default_factory=list)
+    summary: str
+
+
+class NegotiationRunResponse(BaseModel):
+    task: WorkflowTask
+    decision: WorkflowDecision
+    negotiation: NegotiationOutcome
+
+
+class ChatRunResponse(BaseModel):
+    task: WorkflowTask
+    decision: WorkflowDecision
+    route: str
+    assistant_reply: str
+    negotiation: NegotiationOutcome | None = None
+
+
 class WorkflowStatusUpdateRequest(BaseModel):
     status: str = Field(min_length=1)
 

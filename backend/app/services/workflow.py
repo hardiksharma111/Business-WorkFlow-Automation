@@ -4,6 +4,8 @@ from app.config import Settings
 from app.models import WorkflowDecision, WorkflowIntakeRequest
 from app.services.embeddings import EmbeddingService
 from app.services.llm import OllamaService
+from app.services.negotiation import NegotiationGraph
+from app.services.seller_registry import SellerRegistryService
 from app.services.vector_store import VectorStoreService
 
 
@@ -19,6 +21,8 @@ class WorkflowEngine:
         self._embeddings = embedding_service
         self._vector_store = vector_store
         self._llm = llm_service
+        self._seller_registry = SellerRegistryService()
+        self._negotiation_graph = NegotiationGraph(self.classify_only, self._llm, self._seller_registry)
 
     def _select_mode(self, confidence: float) -> tuple[str, bool]:
         if confidence >= self._settings.auto_execute_threshold:
@@ -48,3 +52,6 @@ class WorkflowEngine:
 
     def process(self, request: WorkflowIntakeRequest) -> WorkflowDecision:
         return self.classify_only(request.message)
+
+    def negotiate(self, request: WorkflowIntakeRequest):
+        return self._negotiation_graph.run(request)

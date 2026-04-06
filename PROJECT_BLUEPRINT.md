@@ -4,7 +4,7 @@
 
 ## 1. Vision
 
-Build an AI-native workflow automation platform for small and mid-sized businesses that converts messy business communication into structured, trackable, and executable operations.
+Build an AI-native workflow automation platform for small and mid-sized businesses that converts messy business communication into structured, trackable, executable, and negotiable operations.
 
 ## 2. Problem We Are Solving
 
@@ -17,6 +17,8 @@ This creates three issues:
 
 Our platform introduces a single automation layer that captures messages, reasons over intent, and drives the right action automatically.
 
+The current product direction also adds negotiation intelligence, so when a request needs a better price, alternative terms, or another vendor, the system can keep working instead of stalling on one failed step.
+
 ## 3. Core Stack (Current)
 
 | Layer | Technology | Why It Is Used |
@@ -25,7 +27,7 @@ Our platform introduces a single automation layer that captures messages, reason
 | Local LLM Runtime | Ollama | Cost-controlled local inference and privacy-friendly execution |
 | Model Hub / Embeddings | Hugging Face | Flexible model selection for embeddings and task-specific NLP |
 | Vector Database | ChromaDB | Semantic memory and retrieval for workflow context |
-| API / Orchestration | Python services (planned/expanding) | Agent logic, tool execution, and integrations |
+| API / Orchestration | Python services + LangGraph | Agent logic, tool execution, negotiation branching, and integrations |
 
 ## 4. Architecture Snapshot
 
@@ -63,12 +65,19 @@ flowchart LR
 - Trigger reminders, escalations, and status updates.
 - Route high-risk actions through mandatory human approval.
 
-### 5.4 Audit and Reliability
+### 5.4 Negotiation and Seller Referral
+
+- Convert chat messages into negotiation-aware workflow runs.
+- Draft seller-facing or procurement-facing negotiation replies.
+- Prefer local sellers first, then search online for new seller referrals when the local pool is exhausted.
+- Keep the workflow moving through alternative paths if one branch fails.
+
+### 5.5 Audit and Reliability
 
 - Preserve decision trace and action logs.
 - Keep deterministic fallbacks when LLM confidence is low.
 
-### 5.5 Operations Dashboard (Real-Time Agent Monitor)
+### 5.6 Operations Dashboard (Real-Time Agent Monitor)
 
 - Live task stream with source, intent, confidence, action, and current status.
 - Agent activity metrics: auto-executed count, pending human queue, and confidence trend.
@@ -108,6 +117,7 @@ This dashboard is designed to be the command center for operational trust, not j
 - Launch rule engine with human-in-the-loop approval gates.
 - Add end-to-end execution for 2 to 3 high-value workflows.
 - Add real-time Operations Dashboard with task timeline and intervention controls.
+- Add negotiation flows for WhatsApp-style chat intake and vendor sourcing.
 
 ### Phase 3: Optimization
 
@@ -149,3 +159,4 @@ Every workflow should include timeout, escalation owner, and retry strategy.
 
 - This repository currently contains the frontend template and project direction.
 - Backend orchestration, connectors, and model service hardening are the next active implementation tracks.
+- The active build now includes a LangGraph-backed negotiation flow, WhatsApp Chrome-extension style chat intake, and online seller referral fallback.

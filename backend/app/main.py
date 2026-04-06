@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.models import (
     ConnectorIngestRequest,
+    ChatRunResponse,
     EvaluationRunRequest,
     EvaluationRunResponse,
     HealthResponse,
@@ -14,6 +15,7 @@ from app.models import (
     OllamaConfigResponse,
     KnowledgeIngestRequest,
     KnowledgeSearchRequest,
+    NegotiationRunResponse,
     WorkflowDecision,
     WorkflowIntakeRequest,
     WorkflowRunResponse,
@@ -60,6 +62,31 @@ task_store = WorkflowTaskStore("./data/workflows.db")
 evaluation_service = EvaluationService(workflow_engine)
 _last_service_states: dict[str, str] = {}
 _periodic_warmup_task: asyncio.Task[None] | None = None
+
+
+NEGOTIATION_INTENTS = {"procurement", "approval_request"}
+NEGOTIATION_KEYWORDS = {
+    "negotiate",
+    "negotiation",
+    "supplier",
+    "vendor",
+    "price",
+    "quote",
+    "discount",
+    "bulk",
+    "terms",
+}
+
+
+def should_invoke_negotiation(payload: WorkflowIntakeRequest, decision: WorkflowDecision) -> bool:
+    if bool(payload.metadata.get("force_negotiation", False)):
+        return True
+
+    if decision.intent in NEGOTIATION_INTENTS:
+        return True
+
+    text = payload.message.lower()
+    return any(keyword in text for keyword in NEGOTIATION_KEYWORDS)
 
 
 def get_system_status() -> SystemStatusResponse:
@@ -243,6 +270,53 @@ def workflow_intake_and_create(payload: WorkflowIntakeRequest) -> WorkflowRunRes
     decision = workflow_engine.process(payload)
     task = task_store.create_task(payload, decision)
     return WorkflowRunResponse(task=task, decision=decision)
+
+
+@app.post("/api/v1/chat", response_model=ChatRunResponse)
+def chat(payload: WorkflowIntakeRequest) -> ChatRunResponse:
+    decision = workflow_engine.process(payload)
+
+    if should_invoke_negotiation(payload, decision):
+        negotiation_decision, negotiation = workflow_engine.negotiate(payload)
+        enriched_metadata = dict(payload.metadata)
+        enriched_metadata["route"] = "negotiation"
+        enriched_metadata["negotiation"] = negotiation.model_dump()
+        task_payload = WorkflowIntakeRequest(source=payload.source, message=payload.message, metadata=enriched_metadata)
+        task = task_store.create_task(task_payload, negotiation_decision)
+        return ChatRunResponse(
+            task=task,
+            decision=negotiation_decision,
+            route="negotiation",
+            assistant_reply=negotiation.reply,
+            negotiation=negotiation,
+        )
+
+    assistant_reply = (
+        f"I mapped this request to {decision.intent} with {(decision.confidence * 100):.1f}% confidence. "
+        f"Recommended action: {decision.recommended_action}."
+    )
+    enriched_metadata = dict(payload.metadata)
+    enriched_metadata["route"] = "general_ai"
+    task_payload = WorkflowIntakeRequest(source=payload.source, message=payload.message, metadata=enriched_metadata)
+    task = task_store.create_task(task_payload, decision)
+
+    return ChatRunResponse(
+        task=task,
+        decision=decision,
+        route="general_ai",
+        assistant_reply=assistant_reply,
+        negotiation=None,
+    )
+
+
+@app.post("/api/v1/negotiation/chat", response_model=NegotiationRunResponse)
+def negotiation_chat(payload: WorkflowIntakeRequest) -> NegotiationRunResponse:
+    decision, negotiation = workflow_engine.negotiate(payload)
+    enriched_metadata = dict(payload.metadata)
+    enriched_metadata["negotiation"] = negotiation.model_dump()
+    request_for_task = WorkflowIntakeRequest(source=payload.source, message=payload.message, metadata=enriched_metadata)
+    task = task_store.create_task(request_for_task, decision)
+    return NegotiationRunResponse(task=task, decision=decision, negotiation=negotiation)
 
 
 @app.get("/api/v1/workflows/tasks", response_model=list[WorkflowTask])

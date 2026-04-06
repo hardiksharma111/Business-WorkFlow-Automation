@@ -134,3 +134,12 @@ class WorkflowTaskStore:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
+
+    def check_health(self) -> tuple[str, str]:
+        try:
+            with self._connect() as connection:
+                row = connection.execute("SELECT COUNT(*) AS count FROM workflow_tasks").fetchone()
+            count = int(row["count"]) if row else 0
+            return "online", f"Task store reachable with {count} tasks."
+        except Exception as exc:
+            return "offline", f"Task store error: {exc}"

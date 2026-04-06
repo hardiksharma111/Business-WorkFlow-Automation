@@ -39,8 +39,15 @@ def get_system_status() -> SystemStatusResponse:
     ollama_state, ollama_detail, ollama_latency = ollama_service.check_health()
     embeddings_state, embeddings_detail = embedding_service.check_health()
     chroma_state, chroma_detail = vector_store.check_health()
+    task_store_state, task_store_detail = task_store.check_health()
 
     services = [
+        ServiceStatus(
+            name="api",
+            state="online",
+            detail="Backend API is running and responding.",
+            latency_ms=None,
+        ),
         ServiceStatus(
             name="ollama",
             state=ollama_state,
@@ -49,6 +56,7 @@ def get_system_status() -> SystemStatusResponse:
         ),
         ServiceStatus(name="embeddings", state=embeddings_state, detail=embeddings_detail),
         ServiceStatus(name="chromadb", state=chroma_state, detail=chroma_detail),
+        ServiceStatus(name="task_store", state=task_store_state, detail=task_store_detail),
     ]
 
     states = {service.state for service in services}

@@ -30,6 +30,8 @@ type SystemStatus = {
   services: ServiceStatus[];
 };
 
+const CORE_SERVICE_ORDER = ["api", "ollama", "embeddings", "chromadb", "task_store"] as const;
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 async function fetchTasks(): Promise<WorkflowTask[]> {
@@ -233,7 +235,31 @@ export default function OperationsDashboardPage() {
     return "svc-dot svc-offline";
   };
 
-  const overallLabel = systemStatus ? prettyLabel(systemStatus.overall) : "Checking";
+  const displayedServices = useMemo<ServiceStatus[]>(() => {
+    const byName = new Map((systemStatus?.services ?? []).map((service) => [service.name, service]));
+
+    return CORE_SERVICE_ORDER.map((name) => {
+      const found = byName.get(name);
+      if (found) {
+        return found;
+      }
+
+      return {
+        name,
+        state: "offline",
+        detail: statusError
+          ? "No response from backend status endpoint."
+          : "Service status not reported yet.",
+        latency_ms: null
+      };
+    });
+  }, [statusError, systemStatus]);
+
+  const overallState: "online" | "loading" | "offline" = systemStatus
+    ? systemStatus.overall
+    : statusError
+      ? "offline"
+      : "loading";
 
   return (
     <main className="ops-shell">
@@ -311,9 +337,9 @@ export default function OperationsDashboardPage() {
       <section className="ops-system-panel">
         <header className="ops-system-head">
           <h2>Settings & Backend Health</h2>
-          <span className={serviceStateClass(systemStatus?.overall ?? "loading")}>
+          <span className={serviceStateClass(overallState)}>
             <span />
-            {overallLabel}
+            {prettyLabel(overallState)}
           </span>
         </header>
 
@@ -323,7 +349,7 @@ export default function OperationsDashboardPage() {
         {statusError ? <p className="ops-error">{statusError}</p> : null}
 
         <div className="ops-service-grid">
-          {(systemStatus?.services ?? []).map((service) => (
+          {displayedServices.map((service) => (
             <article key={service.name} className="ops-service-card">
               <div className="ops-service-top">
                 <h3>{prettyLabel(service.name)}</h3>

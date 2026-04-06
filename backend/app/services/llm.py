@@ -78,12 +78,7 @@ class OllamaService:
             response = self._client.list()
             elapsed_ms = int((time.perf_counter() - start) * 1000)
 
-            models = response.get("models", []) if isinstance(response, dict) else []
-            model_names = {
-                model.get("model")
-                for model in models
-                if isinstance(model, dict) and model.get("model")
-            }
+            model_names = set(self._extract_model_names(response))
 
             if self._model in model_names:
                 return "online", f"Model {self._model} is available.", elapsed_ms
@@ -113,13 +108,7 @@ class OllamaService:
 
     def list_models(self) -> list[str]:
         response = self._client.list()
-        models = response.get("models", []) if isinstance(response, dict) else []
-        names = [
-            str(model.get("model"))
-            for model in models
-            if isinstance(model, dict) and model.get("model")
-        ]
-        return sorted(set(names))
+        return sorted(set(self._extract_model_names(response)))
 
     def pull_model(self, model_name: str | None = None) -> tuple[str, str]:
         target = model_name or self._model
@@ -128,3 +117,27 @@ class OllamaService:
             return "online", f"Model {target} pulled successfully."
         except Exception as exc:
             return "offline", f"Failed to pull model {target}: {exc}"
+
+    def _extract_model_names(self, response: Any) -> list[str]:
+        models: list[Any]
+
+        if hasattr(response, "models"):
+            models = list(getattr(response, "models") or [])
+        elif isinstance(response, dict):
+            models = list(response.get("models") or [])
+        else:
+            models = []
+
+        names: list[str] = []
+        for model in models:
+            if hasattr(model, "model"):
+                name = getattr(model, "model")
+            elif isinstance(model, dict):
+                name = model.get("model")
+            else:
+                name = None
+
+            if name:
+                names.append(str(name))
+
+        return names

@@ -27,13 +27,12 @@ class WorkflowEngine:
             return "suggest", True
         return "manual_review", True
 
-    def process(self, request: WorkflowIntakeRequest) -> WorkflowDecision:
-        query_vector = self._embeddings.embed([request.message])[0]
+    def classify_only(self, message: str) -> WorkflowDecision:
+        query_vector = self._embeddings.embed([message])[0]
         matches = self._vector_store.query(query_vector, limit=5)
         context_texts = [match.text for match in matches]
 
-        llm_result = self._llm.classify(request.message, context_texts)
-
+        llm_result = self._llm.classify(message, context_texts)
         confidence = max(0.0, min(1.0, float(llm_result["confidence"])))
         mode, requires_human = self._select_mode(confidence)
 
@@ -46,3 +45,6 @@ class WorkflowEngine:
             requires_human_approval=requires_human,
             retrieved_context=matches,
         )
+
+    def process(self, request: WorkflowIntakeRequest) -> WorkflowDecision:
+        return self.classify_only(request.message)

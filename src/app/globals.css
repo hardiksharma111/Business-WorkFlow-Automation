@@ -571,3 +571,134 @@ a {
     padding-top: 72px;
   }
 }
+
+.ops-shell {
+  width: min(1200px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 28px 0 60px;
+}
+
+.ops-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  background: linear-gradient(180deg, rgba(14, 24, 43, 0.95), rgba(8, 15, 26, 0.9));
+}
+
+.ops-hero h1 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  letter-spacing: -0.03em;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+}
+
+.ops-hero p {
+  color: var(--muted);
+  margin: 14px 0 0;
+  max-width: 64ch;
+}
+
+.ops-metrics {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ops-metric-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ops-metric-card h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ops-metric-card strong {
+  display: block;
+  margin-top: 12px;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 2rem;
+}
+
+.ops-table-wrap {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(14, 24, 43, 0.95), rgba(8, 15, 26, 0.9));
+}
+
+.ops-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ops-table-head h2 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.ops-refresh {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ops-table-scroll {
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 920px;
+}
+
+.ops-table th,
+.ops-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+
+.ops-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ops-note {
+  color: var(--muted);
+}
+
+.ops-error {
+  color: #fecaca;
+}
+
+@media (max-width: 960px) {
+  .ops-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-hero {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .ops-metrics {
+    grid-template-columns: 1fr;
+  }
+}

@@ -76,6 +76,7 @@ export default function Home() {
           <nav className="topnav" aria-label="Primary">
             <a href="#features">Features</a>
             <a href="#process">Process</a>
+            <a href="/operations">Operations</a>
             <a href="#contact">Contact</a>
           </nav>
         </header>

@@ -10,6 +10,16 @@ A polished Next.js template for business workflow automation products and servic
 
 - Frontend: Next.js landing page template is implemented.
 - Backend: FastAPI MVP has been added in `backend/` with Ollama, Hugging Face embeddings, and ChromaDB integration.
+- Operations Dashboard: Live monitoring page is available at `/operations`.
+
+## Frontend API Integration
+
+- Set `NEXT_PUBLIC_API_BASE` to the backend URL (default is `http://localhost:8000`).
+- Example on Windows PowerShell before `npm run dev`:
+
+```powershell
+$env:NEXT_PUBLIC_API_BASE="http://localhost:8000"
+```
 
 ## Backend Quick Start
 

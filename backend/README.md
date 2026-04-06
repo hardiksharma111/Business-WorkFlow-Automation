@@ -34,3 +34,8 @@ uvicorn app.main:app --reload --port 8000
 - `POST /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/search`
 - `POST /api/v1/workflows/intake`
+- `POST /api/v1/workflows/intake-and-create`
+- `GET /api/v1/workflows/tasks`
+- `PATCH /api/v1/workflows/tasks/{task_id}`
+- `POST /api/v1/connectors/{connector}/ingest`
+- `POST /api/v1/evaluation/run`

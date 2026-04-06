@@ -68,6 +68,16 @@ flowchart LR
 - Preserve decision trace and action logs.
 - Keep deterministic fallbacks when LLM confidence is low.
 
+### 5.5 Operations Dashboard (Real-Time Agent Monitor)
+
+- Live task stream with source, intent, confidence, action, and current status.
+- Agent activity metrics: auto-executed count, pending human queue, and confidence trend.
+- Human intervention controls for approval, rejection, and status updates.
+- Evaluation panel to compare expected intent vs predicted intent for sample datasets.
+- SLA and escalation visibility for overdue or blocked workflows.
+
+This dashboard is designed to be the command center for operational trust, not just analytics.
+
 ## 6. Model Strategy
 
 ### 6.1 Ollama
@@ -97,7 +107,7 @@ flowchart LR
 
 - Launch rule engine with human-in-the-loop approval gates.
 - Add end-to-end execution for 2 to 3 high-value workflows.
-- Add audit trail and activity timeline in UI.
+- Add real-time Operations Dashboard with task timeline and intervention controls.
 
 ### Phase 3: Optimization
 

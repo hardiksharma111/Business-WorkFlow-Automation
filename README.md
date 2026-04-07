@@ -65,9 +65,8 @@ cd ..
 npm run dev:up
 ```
 
-Expected URLs:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8000
+Expected URL:
+https://business-work-flow-automation-8xqicscww.vercel.app/
 
 ### 4. Stop Full Stack
 

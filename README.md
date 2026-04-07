@@ -29,6 +29,12 @@ The app is built for fast demos and practical execution:
 - `backend/`: API, workflow logic, services, and data store
 - `scripts/`: local startup and shutdown helpers
 
+## Submission Docs
+
+- `docs/REPO_STRUCTURE.md`: quick folder ownership and monorepo map
+- `docs/DEPLOYMENT_VERCEL_RAILWAY.md`: deployment checklist
+- `docs/CODE_QUALITY_AND_SECURITY.md`: quality/security notes for analyzers
+
 ## Local Development
 
 ### Prerequisites

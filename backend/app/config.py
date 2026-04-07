@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     hf_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chroma_persist_path: str = "./data/chroma"
     chroma_collection: str = "workflow_memory"
+    workflow_db_path: str = "./data/workflows.db"
     auto_execute_threshold: float = 0.80
     suggest_only_threshold: float = 0.55
     cors_origins: list[str] = Field(
@@ -25,7 +26,10 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors_origins(cls, value: object) -> object:
         if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
+            origins = [item.strip() for item in value.split(",") if item.strip()]
+            if "*" in origins:
+                raise ValueError("CORS_ORIGINS cannot include '*'. Use explicit origins.")
+            return origins
         return value
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

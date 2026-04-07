@@ -567,13 +567,6 @@ export default function DashboardHome() {
             ))}
           </div>
 
-          {activeStage ? (
-            <div className="stage-detail-line">
-              <strong>{activeStage.title}</strong>
-              <span>{activeStage.expandedDetail}</span>
-            </div>
-          ) : null}
-
           <div className="status-board compact">
             <article className="status-board-item">
               <div>

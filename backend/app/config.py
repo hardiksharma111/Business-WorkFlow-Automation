@@ -1,12 +1,13 @@
 import json
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2:3b"
+    groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
+    groq_model: str = Field(default="llama-3.3-70b-versatile", validation_alias="GROQ_MODEL")
+    groq_base_url: str = Field(default="https://api.groq.com/openai/v1", validation_alias="GROQ_BASE_URL")
     hf_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chroma_persist_path: str = "./data/chroma"
     chroma_collection: str = "workflow_memory"

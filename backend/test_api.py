@@ -47,14 +47,14 @@ def test_analytics_overview() -> dict[str, Any]:
         return data
 
 
-def test_system_ollama_models() -> list:
-    """Test Ollama models endpoint"""
+def test_system_models() -> list:
+    """Test model listing endpoint"""
     with httpx.Client() as client:
         response = client.get(f"{BASE_URL}{API_PREFIX}/system/ollama/models")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         data = response.json()
         assert "models" in data, "Missing 'models' field"
-        print(f"✓ Ollama models endpoint OK (found {len(data['models'])} models)")
+        print(f"✓ Model listing endpoint OK (found {len(data['models'])} models)")
         return data
 
 
@@ -68,7 +68,7 @@ def run_all_tests() -> bool:
         ("System Status", test_system_status),
         ("Workflows Tasks", test_workflows_tasks),
         ("Analytics Overview", test_analytics_overview),
-        ("Ollama Models", test_system_ollama_models),
+        ("Model Listing", test_system_models),
     ]
 
     passed = 0

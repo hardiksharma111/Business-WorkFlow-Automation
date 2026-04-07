@@ -35,7 +35,7 @@ from app.models import (
 from app.services.connectors import to_workflow_intake
 from app.services.embeddings import EmbeddingService
 from app.services.evaluation import EvaluationService
-from app.services.llm import OllamaService
+from app.services.llm import GroqService
 from app.services.task_store import WorkflowTaskStore
 from app.services.vector_store import VectorStoreService
 from app.services.workflow import WorkflowEngine
@@ -52,8 +52,8 @@ app.add_middleware(
 
 embedding_service = EmbeddingService(settings.hf_embedding_model)
 vector_store = VectorStoreService(settings.chroma_persist_path, settings.chroma_collection)
-ollama_service = OllamaService(settings.ollama_host, settings.ollama_model)
-workflow_engine = WorkflowEngine(settings, embedding_service, vector_store, ollama_service)
+llm_service = GroqService(settings.groq_api_key, settings.groq_model, settings.groq_base_url)
+workflow_engine = WorkflowEngine(settings, embedding_service, vector_store, llm_service)
 task_store = WorkflowTaskStore(settings.workflow_db_path)
 evaluation_service = EvaluationService(workflow_engine)
 _last_service_states: dict[str, str] = {}
@@ -86,7 +86,7 @@ def should_invoke_negotiation(payload: WorkflowIntakeRequest, decision: Workflow
 
 
 def get_system_status() -> SystemStatusResponse:
-    ollama_state, ollama_detail, ollama_latency = ollama_service.check_health()
+    llm_state, llm_detail, llm_latency = llm_service.check_health()
     embeddings_state, embeddings_detail = embedding_service.check_health()
     chroma_state, chroma_detail = vector_store.check_health()
     task_store_state, task_store_detail = task_store.check_health()
@@ -100,9 +100,9 @@ def get_system_status() -> SystemStatusResponse:
         ),
         ServiceStatus(
             name="ollama",
-            state=ollama_state,
-            detail=ollama_detail,
-            latency_ms=ollama_latency,
+            state=llm_state,
+            detail=llm_detail,
+            latency_ms=llm_latency,
         ),
         ServiceStatus(name="embeddings", state=embeddings_state, detail=embeddings_detail),
         ServiceStatus(name="chromadb", state=chroma_state, detail=chroma_detail),
@@ -129,7 +129,7 @@ def get_system_status() -> SystemStatusResponse:
 async def periodic_warmup_loop() -> None:
     while True:
         try:
-            await asyncio.to_thread(ollama_service.warmup)
+            await asyncio.to_thread(llm_service.warmup)
             await asyncio.to_thread(embedding_service.warmup)
             await asyncio.to_thread(get_system_status)
         except asyncio.CancelledError:
@@ -185,7 +185,7 @@ def system_warmup(payload: SystemWarmupRequest) -> SystemWarmupResponse:
     results: list[ServiceStatus] = []
 
     if "ollama" in requested:
-        state, detail, latency = ollama_service.warmup()
+        state, detail, latency = llm_service.warmup()
         results.append(ServiceStatus(name="ollama", state=state, detail=detail, latency_ms=latency))
 
     if "embeddings" in requested:
@@ -206,20 +206,20 @@ def system_status_history(limit: int = 100) -> list[ServiceStatusHistoryItem]:
 
 @app.get("/api/v1/system/ollama/models", response_model=OllamaModelListResponse)
 def ollama_models() -> OllamaModelListResponse:
-    models = ollama_service.list_models()
-    return OllamaModelListResponse(configured_model=ollama_service.configured_model(), models=models)
+    models = llm_service.list_models()
+    return OllamaModelListResponse(configured_model=llm_service.configured_model(), models=models)
 
 
 @app.post("/api/v1/system/ollama/pull", response_model=OllamaPullResponse)
 def ollama_pull(payload: OllamaPullRequest) -> OllamaPullResponse:
-    target_model = payload.model or ollama_service.configured_model()
-    status, detail = ollama_service.pull_model(payload.model)
+    target_model = payload.model or llm_service.configured_model()
+    status, detail = llm_service.pull_model(payload.model)
     return OllamaPullResponse(model=target_model, status=status, detail=detail)
 
 
 @app.put("/api/v1/system/ollama/config", response_model=OllamaConfigResponse)
 def ollama_config(payload: OllamaConfigRequest) -> OllamaConfigResponse:
-    configured = ollama_service.set_configured_model(payload.model)
+    configured = llm_service.set_configured_model(payload.model)
     task_store.record_service_status("ollama_config", "online", f"Configured model switched to {configured}.")
     return OllamaConfigResponse(
         configured_model=configured,

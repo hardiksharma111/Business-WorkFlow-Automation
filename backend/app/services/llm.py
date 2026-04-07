@@ -3,15 +3,71 @@ from __future__ import annotations
 import json
 import re
 import time
+import urllib.error
+import urllib.request
 from typing import Any
 
-from ollama import Client
 
-
-class OllamaService:
-    def __init__(self, host: str, model: str) -> None:
-        self._client = Client(host=host)
+class GroqService:
+    def __init__(self, api_key: str, model: str, base_url: str = "https://api.groq.com/openai/v1") -> None:
+        self._api_key = api_key.strip()
         self._model = model
+        self._base_url = base_url.rstrip("/")
+        self._timeout = 30.0
+
+    def _api_headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        return headers
+
+    def _request_json(self, method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        url = f"{self._base_url}{path}"
+        data = None
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+
+        request = urllib.request.Request(url, data=data, headers=self._api_headers(), method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=self._timeout) as response:
+                body = response.read().decode("utf-8").strip()
+        except urllib.error.HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+            raise RuntimeError(f"Groq API request failed with status {exc.code}: {error_body or exc.reason}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"Groq API request failed: {exc.reason}") from exc
+
+        if not body:
+            return {}
+
+        return json.loads(body)
+
+    def _chat_completion(self, prompt: str, temperature: float) -> dict[str, Any]:
+        if not self._api_key:
+            raise RuntimeError("GROQ_API_KEY is not configured.")
+
+        payload = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": "You output strict JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": temperature,
+            "stream": False,
+        }
+        return self._request_json("POST", "/chat/completions", payload)
+
+    def _extract_content(self, response: Any) -> str:
+        if isinstance(response, dict):
+            choices = response.get("choices") or []
+            if choices:
+                message = choices[0].get("message") or {}
+                return str(message.get("content", ""))
+        return ""
+
+    def _parse_json_content(self, content: str) -> dict[str, Any]:
+        cleaned = re.sub(r"^```json|```$", "", content.strip(), flags=re.MULTILINE).strip()
+        return json.loads(cleaned)
 
     def _fallback(self, message: str) -> dict[str, Any]:
         text = message.lower()
@@ -44,24 +100,25 @@ class OllamaService:
         context_block = "\n".join(f"- {item}" for item in context[:5])
 
         prompt = (
-            "You are an operations workflow classifier. "
+            "You are an operations workflow classifier for business requests. "
             "Return only valid JSON with keys: intent, entities, confidence, recommended_action.\n\n"
+            "Intent guidance:\n"
+            "- general_request: greetings, small talk, or unclear requests\n"
+            "- procurement: ordering, sourcing, buying, prices, quantities, vendors\n"
+            "- approval_request: requests that need approval or sign-off\n"
+            "- escalation: blockers, urgent issues, complaints, or incidents\n\n"
+            "Examples:\n"
+            "Message: how are you\n"
+            "Output: {\"intent\":\"general_request\",\"entities\":{},\"confidence\":0.95,\"recommended_action\":\"triage\"}\n"
+            "Message: order 50kg tomato\n"
+            "Output: {\"intent\":\"procurement\",\"entities\":{\"item\":\"tomato\",\"quantity\":\"50kg\"},\"confidence\":0.96,\"recommended_action\":\"create_procurement_task\"}\n\n"
             f"Message:\n{message}\n\n"
             f"Relevant context:\n{context_block if context_block else '- none'}\n"
         )
 
         try:
-            response = self._client.chat(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": "You output strict JSON only."},
-                    {"role": "user", "content": prompt},
-                ],
-                options={"temperature": 0.1},
-            )
-            content = response["message"]["content"].strip()
-            content = re.sub(r"^```json|```$", "", content, flags=re.MULTILINE).strip()
-            parsed = json.loads(content)
+            response = self._chat_completion(prompt, temperature=0.1)
+            parsed = self._parse_json_content(self._extract_content(response))
 
             return {
                 "intent": str(parsed.get("intent", "general_request")),
@@ -96,17 +153,8 @@ class OllamaService:
         )
 
         try:
-            response = self._client.chat(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": "You output strict JSON only."},
-                    {"role": "user", "content": prompt},
-                ],
-                options={"temperature": 0.15},
-            )
-            content = response["message"]["content"].strip()
-            content = re.sub(r"^```json|```$", "", content, flags=re.MULTILINE).strip()
-            parsed = json.loads(content)
+            response = self._chat_completion(prompt, temperature=0.15)
+            parsed = self._parse_json_content(self._extract_content(response))
 
             return {
                 "reply": str(parsed.get("reply", "")),
@@ -123,33 +171,26 @@ class OllamaService:
     def check_health(self) -> tuple[str, str, int | None]:
         start = time.perf_counter()
         try:
-            response = self._client.list()
+            response = self._request_json("GET", "/models")
             elapsed_ms = int((time.perf_counter() - start) * 1000)
 
             model_names = set(self._extract_model_names(response))
 
             if self._model in model_names:
-                return "online", f"Model {self._model} is available.", elapsed_ms
+                return "online", f"Groq model {self._model} is available.", elapsed_ms
 
-            return "loading", f"Ollama reachable, but model {self._model} is not pulled yet.", elapsed_ms
+            return "loading", f"Groq API reachable, but model {self._model} is not in the returned model list yet.", elapsed_ms
         except Exception as exc:
-            return "offline", f"Ollama not reachable: {exc}", None
+            return "offline", f"Groq API not reachable: {exc}", None
 
     def warmup(self) -> tuple[str, str, int | None]:
         start = time.perf_counter()
         try:
-            self._client.chat(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": "Respond with a single word: ready."},
-                    {"role": "user", "content": "warmup"},
-                ],
-                options={"temperature": 0},
-            )
+            self._chat_completion("Respond with a single word: ready.", temperature=0.0)
             elapsed_ms = int((time.perf_counter() - start) * 1000)
-            return "online", f"Ollama model {self._model} warmup completed.", elapsed_ms
+            return "online", f"Groq model {self._model} warmup completed.", elapsed_ms
         except Exception as exc:
-            return "offline", f"Ollama warmup failed: {exc}", None
+            return "offline", f"Groq warmup failed: {exc}", None
 
     def configured_model(self) -> str:
         return self._model
@@ -162,24 +203,24 @@ class OllamaService:
         return self._model
 
     def list_models(self) -> list[str]:
-        response = self._client.list()
+        try:
+            response = self._request_json("GET", "/models")
+        except Exception:
+            return [self._model]
         return sorted(set(self._extract_model_names(response)))
 
     def pull_model(self, model_name: str | None = None) -> tuple[str, str]:
         target = model_name or self._model
-        try:
-            self._client.pull(model=target, stream=False)
-            return "online", f"Model {target} pulled successfully."
-        except Exception as exc:
-            return "offline", f"Failed to pull model {target}: {exc}"
+        self._model = target.strip()
+        return "online", f"Groq model selection updated to {self._model}."
 
     def _extract_model_names(self, response: Any) -> list[str]:
         models: list[Any]
 
-        if hasattr(response, "models"):
+        if isinstance(response, dict):
+            models = list(response.get("data") or response.get("models") or [])
+        elif hasattr(response, "models"):
             models = list(getattr(response, "models") or [])
-        elif isinstance(response, dict):
-            models = list(response.get("models") or [])
         else:
             models = []
 
@@ -225,3 +266,6 @@ class OllamaService:
             "alternative_path": alternative_path,
             "summary": summary,
         }
+
+
+OllamaService = GroqService

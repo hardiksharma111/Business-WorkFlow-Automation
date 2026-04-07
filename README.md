@@ -10,9 +10,21 @@ The app is built for fast demos and practical execution:
 
 ## Architecture
 
-- Frontend: Next.js 16 + React 19 + TypeScript
-- Backend: FastAPI + Python
-- AI Services: Ollama, Hugging Face embeddings, ChromaDB
+- Frontend (UI and web app):
+	- Next.js 16 (App Router)
+	- React 19
+	- TypeScript 5
+	- CSS modules via global stylesheet (`frontend/app/globals.css`)
+	- ESLint 9 + `eslint-config-next`
+- Backend (API and orchestration):
+	- Python 3.11+
+	- FastAPI
+	- Uvicorn (`uvicorn[standard]`)
+	- Pydantic Settings (`pydantic-settings`) for env/config management
+	- LangGraph (negotiation graph path)
+	- ChromaDB (vector storage)
+	- Groq API for chat/completion inference
+	- python-dotenv for local environment loading
 - Workflow Engine: intent routing, negotiation handling, execution fallback
 
 ### LangGraph Status (Current)
@@ -42,7 +54,7 @@ The app is built for fast demos and practical execution:
 - Node.js 20+
 - Python 3.11+
 - Windows PowerShell (for provided scripts)
-- Optional: local Ollama runtime for full AI behavior
+- Optional: Groq API key for live AI behavior
 
 ### 1. Install Frontend Dependencies
 
@@ -99,8 +111,9 @@ If you need fully free backend hosting after trial, consider Render/Fly alternat
 2. Set start command:
 	- `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 3. Add environment variables (Railway service settings):
-	- `OLLAMA_HOST`
-	- `OLLAMA_MODEL`
+	- `GROQ_API_KEY`
+	- `GROQ_MODEL`
+	- `GROQ_BASE_URL`
 	- `HF_EMBEDDING_MODEL`
 	- `CHROMA_PERSIST_PATH`
 	- `CHROMA_COLLECTION`
@@ -159,10 +172,10 @@ This demonstrates the core value clearly: unstructured input to structured execu
 - Verify backend health at `http://localhost:8000/api/v1/system/status`
 - Confirm `NEXT_PUBLIC_API_BASE` is set to `http://localhost:8000`
 
-### Ollama unavailable
+### AI model unavailable
 
-- Core app can still run with fallback behavior
-- For full local model features, start Ollama and pull configured models
+- Core app can still run with fallback behavior if Groq is unavailable
+- For full AI behavior, set `GROQ_API_KEY` and ensure `GROQ_MODEL` is valid
 
 ## Notes
 

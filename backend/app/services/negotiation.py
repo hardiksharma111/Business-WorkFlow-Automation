@@ -5,7 +5,7 @@ from typing import Any, Callable, TypedDict
 from langgraph.graph import END, StateGraph
 
 from app.models import NegotiationOutcome, SellerLead, WorkflowDecision, WorkflowIntakeRequest
-from app.services.llm import OllamaService
+from app.services.llm import GroqService
 from app.services.seller_registry import SellerRegistryService
 
 
@@ -31,7 +31,7 @@ class NegotiationGraph:
     def __init__(
         self,
         classify_message: Callable[[str], WorkflowDecision],
-        llm_service: OllamaService,
+        llm_service: GroqService,
         seller_registry: SellerRegistryService,
     ) -> None:
         self._classify_message = classify_message

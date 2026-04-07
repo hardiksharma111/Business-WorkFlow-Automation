@@ -4,7 +4,7 @@ from app.config import Settings
 from app.models import WorkflowDecision, WorkflowExecutionResult, WorkflowIntakeRequest
 from app.services.embeddings import EmbeddingService
 from app.services.execution import WorkflowExecutionService
-from app.services.llm import OllamaService
+from app.services.llm import GroqService
 from app.services.negotiation import NegotiationGraph
 from app.services.seller_registry import SellerRegistryService
 from app.services.vector_store import VectorStoreService
@@ -16,7 +16,7 @@ class WorkflowEngine:
         settings: Settings,
         embedding_service: EmbeddingService,
         vector_store: VectorStoreService,
-        llm_service: OllamaService,
+        llm_service: GroqService,
     ) -> None:
         self._settings = settings
         self._embeddings = embedding_service

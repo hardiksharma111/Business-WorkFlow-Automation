@@ -2,7 +2,7 @@
 
 This backend provides a starter implementation for:
 
-- Intent and entity extraction using Ollama
+- Intent and entity extraction using Groq (legacy /api/v1/system/ollama/* routes are kept for compatibility)
 - Embedding generation using a Hugging Face model (optional in deployment; fallback embeddings are available)
 - Semantic memory and retrieval using ChromaDB
 - Confidence-based workflow decisioning
@@ -77,19 +77,13 @@ It will:
 - Uses fallback actions when a primary step fails.
 - Persists execution summary in task metadata and updates task status (`completed`, `pending_human`, or `failed`).
 
-## Ollama Local Pull
+## Groq API Setup
 
-Run this on the same machine where the backend API is running (your local Windows PC in this setup):
-
-```powershell
-ollama pull llama3.2:3b
-```
-
-You can run it from any directory in terminal, as long as the `ollama` command is installed and available in PATH.
+Set `GROQ_API_KEY`, `GROQ_MODEL`, and `GROQ_BASE_URL` in `.env` or your deployment environment.
 
 ## Runtime Model Switch
 
-To switch the backend's active Ollama model without editing `.env`, call:
+To switch the backend's active Groq model without editing `.env`, call:
 
 ```http
 PUT /api/v1/system/ollama/config
@@ -98,5 +92,5 @@ PUT /api/v1/system/ollama/config
 Body:
 
 ```json
-{ "model": "gemma3:4b" }
+{ "model": "llama-3.3-70b-versatile" }
 ```

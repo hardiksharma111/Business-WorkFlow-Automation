@@ -77,7 +77,7 @@ const backendSurfaces = [
   { label: "Task patching", value: "/api/v1/workflows/tasks/{id}", detail: "Approve or complete actions" },
   { label: "System status", value: "/api/v1/system/status", detail: "Service health and uptime" },
   { label: "Analytics", value: "/api/v1/analytics/overview", detail: "Workflow metrics and trends" },
-  { label: "Model lab", value: "/api/v1/system/ollama/models", detail: "Configured and available models" }
+  { label: "Model lab (Groq)", value: "/api/v1/system/ollama/models", detail: "Configured and available models" }
 ];
 
 export default function SettingsPage() {

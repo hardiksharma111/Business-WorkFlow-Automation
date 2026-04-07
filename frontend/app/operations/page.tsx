@@ -432,7 +432,7 @@ export default function OperationsDashboardPage() {
             onClick={() => runWarmup("ollama")}
             disabled={warmupLoading !== null}
           >
-            {warmupLoading === "ollama" ? "Warming..." : "Warmup Ollama"}
+            {warmupLoading === "ollama" ? "Warming..." : "Warmup AI"}
           </button>
           <button
             type="button"

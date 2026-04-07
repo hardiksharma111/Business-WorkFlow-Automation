@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type ServiceStatus = {
   name: string;
@@ -27,42 +27,6 @@ type WorkflowTask = {
   requires_human_approval: boolean;
   created_at: string;
   updated_at: string;
-};
-
-type ServiceHistoryItem = {
-  service: string;
-  state: string;
-  detail: string;
-  changed_at: string;
-};
-
-type AnalyticsBucket = {
-  label: string;
-  value: number;
-};
-
-type WorkflowAnalyticsResponse = {
-  total_tasks: number;
-  completed_tasks: number;
-  partial_tasks: number;
-  failed_tasks: number;
-  pending_tasks: number;
-  auto_executed_tasks: number;
-  human_review_tasks: number;
-  negotiation_runs: number;
-  negotiation_fallbacks: number;
-  execution_fallback_steps: number;
-  avg_confidence: number;
-  confidence_trend: number[];
-  top_intents: AnalyticsBucket[];
-  source_mix: AnalyticsBucket[];
-  execution_mix: AnalyticsBucket[];
-  recent_failures: string[];
-};
-
-type OllamaModelsResponse = {
-  configured_model: string;
-  models: string[];
 };
 
 type NegotiationSellerLead = {
@@ -107,31 +71,35 @@ type DemoActionCard = {
   taskId: string;
 };
 
-type ViewMode = "command-center" | "workflow-flow" | "system-health" | "model-lab";
+type DemoStage = {
+  id: string;
+  title: string;
+  detail: string;
+  expandedDetail: string;
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-const API_HOST = API_BASE.replace(/^https?:\/\//, "");
-
-const viewModes: Array<{ value: ViewMode; label: string; description: string }> = [
+const demoStages: DemoStage[] = [
   {
-    value: "command-center",
-    label: "Command Center",
-    description: "High-level health, routing pressure, and live throughput"
+    id: "parse",
+    title: "Parse intent",
+    detail: "Turn the raw message into a structured request.",
+    expandedDetail:
+      "The model extracts product, quantity, date, and priority so the workflow engine can route the request correctly."
   },
   {
-    value: "workflow-flow",
-    label: "Workflow Flow",
-    description: "Task handoffs, statuses, and action recommendations"
+    id: "heal",
+    title: "Self-heal",
+    detail: "Detect missing inventory or blocked routing.",
+    expandedDetail:
+      "If the primary path fails, the system falls back to alternate suppliers, alternate channels, and a human-approval path when needed."
   },
   {
-    value: "system-health",
-    label: "System Health",
-    description: "Backend, Ollama, embeddings, ChromaDB, and storage"
-  },
-  {
-    value: "model-lab",
-    label: "Model Lab",
-    description: "Configured model, available models, and warm signals"
+    id: "negotiate",
+    title: "Negotiate",
+    detail: "Gather backup offers and produce the best option.",
+    expandedDetail:
+      "The agent compares available sellers, ranks the best offer, and prepares an action card with a clear approve/reject choice."
   }
 ];
 
@@ -143,74 +111,47 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json();
 }
 
+function prettyLabel(value: string): string {
+  return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function statusTone(state: string): "good" | "warn" | "bad" {
   if (state === "online" || state === "completed") return "good";
   if (state === "loading" || state === "pending_human") return "warn";
   return "bad";
 }
 
-function prettyLabel(value: string): string {
-  return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 function formatTime(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString();
-}
-
-function MiniSparkline({ values }: { values: number[] }) {
-  if (!values.length) {
-    return <span className="sparkline-empty" />;
-  }
-
-  return (
-    <div className="sparkline-bars" aria-hidden="true">
-      {values.map((value, index) => (
-        <span key={`${value}-${index}`} style={{ height: `${Math.max(12, value * 100)}%` }} />
-      ))}
-    </div>
-  );
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function DashboardHome() {
-  const [mode, setMode] = useState<ViewMode>("command-center");
-  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [tasks, setTasks] = useState<WorkflowTask[]>([]);
-  const [history, setHistory] = useState<ServiceHistoryItem[]>([]);
-  const [analytics, setAnalytics] = useState<WorkflowAnalyticsResponse | null>(null);
-  const [models, setModels] = useState<OllamaModelsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [negotiationMessage, setNegotiationMessage] = useState(
-    "Source a wholesale seller who can negotiate pricing, shipping, and provide a backup option if the first quote fails."
-  );
-  const [negotiationResult, setNegotiationResult] = useState<NegotiationRunResponse | null>(null);
-  const [negotiationLoading, setNegotiationLoading] = useState(false);
-  const [negotiationError, setNegotiationError] = useState<string | null>(null);
   const [demoInput, setDemoInput] = useState("Order 50kg tomatoes for tomorrow.");
   const [demoMessages, setDemoMessages] = useState<DemoMessage[]>([]);
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoActionCard, setDemoActionCard] = useState<DemoActionCard | null>(null);
   const [demoDecision, setDemoDecision] = useState<"pending" | "approved" | "rejected">("pending");
+  const [expandedStageId, setExpandedStageId] = useState<string | null>("parse");
 
   useEffect(() => {
     let mounted = true;
 
-    const loadCore = async () => {
+    const load = async () => {
       try {
-        const [nextStatus, nextTasks, nextHistory, nextModels] = await Promise.all([
+        const [nextStatus, nextTasks] = await Promise.all([
           fetchJson<SystemStatus>(`${API_BASE}/api/v1/system/status`),
-          fetchJson<WorkflowTask[]>(`${API_BASE}/api/v1/workflows/tasks?limit=10`),
-          fetchJson<ServiceHistoryItem[]>(`${API_BASE}/api/v1/system/status/history?limit=8`),
-          fetchJson<OllamaModelsResponse>(`${API_BASE}/api/v1/system/ollama/models`)
+          fetchJson<WorkflowTask[]>(`${API_BASE}/api/v1/workflows/tasks?limit=8`)
         ]);
 
         if (mounted) {
           setSystemStatus(nextStatus);
           setTasks(nextTasks);
-          setHistory(nextHistory);
-          setModels(nextModels);
           setError(null);
         }
       } catch (err) {
@@ -224,28 +165,8 @@ export default function DashboardHome() {
       }
     };
 
-    const loadAnalytics = async () => {
-      try {
-        const nextAnalytics = await fetchJson<WorkflowAnalyticsResponse>(
-          `${API_BASE}/api/v1/analytics/overview?limit=50`
-        );
-        if (mounted) {
-          setAnalytics(nextAnalytics);
-        }
-      } catch {
-        if (mounted) {
-          setAnalytics(null);
-        }
-      }
-    };
-
-    loadCore();
-    loadAnalytics();
-
-    const timer = setInterval(() => {
-      loadCore();
-      loadAnalytics();
-    }, 5000);
+    load();
+    const timer = setInterval(load, 5000);
 
     return () => {
       mounted = false;
@@ -254,71 +175,10 @@ export default function DashboardHome() {
   }, []);
 
   useEffect(() => {
+    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
-
-  const heroMetrics = useMemo(() => {
-    const total = analytics?.total_tasks ?? tasks.length;
-    const completed = analytics?.completed_tasks ?? tasks.filter((task) => task.status === "completed").length;
-    const pending = analytics?.pending_tasks ?? tasks.filter((task) => task.status === "pending_human").length;
-    const avgConfidence = analytics ? analytics.avg_confidence : total ? tasks.reduce((sum, task) => sum + task.confidence, 0) / total : 0;
-    const fallbackSteps = analytics?.execution_fallback_steps ?? 0;
-    const successRate = total ? Math.round((completed / total) * 100) : 0;
-
-    return {
-      total,
-      completed,
-      pending,
-      avgConfidence,
-      fallbackSteps,
-      successRate
-    };
-  }, [analytics, tasks]);
-
-  const activeServices = systemStatus?.services ?? [];
-  const selectedMode = viewModes.find((item) => item.value === mode) ?? viewModes[0];
-  const liveTasks = tasks.slice(0, 4);
-  const confidenceSeries = analytics?.confidence_trend ?? [];
-  const topIntents = analytics?.top_intents ?? [];
-  const topSources = analytics?.source_mix ?? [];
-  const executionMix = analytics?.execution_mix ?? [];
-  const apiLabel = API_HOST.replace(/^www\./, "");
-
-  const handleNegotiationSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setNegotiationLoading(true);
-
-    try {
-      const response = await fetch(`${API_BASE}/api/v1/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          source: "whatsapp_chrome_extension",
-          message: negotiationMessage,
-          metadata: {
-            channel: "whatsapp_chrome_extension",
-            workspace: mode,
-            entry_point: "from_scratch_frontend"
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Negotiation request failed with status ${response.status}`);
-      }
-
-      const payload = (await response.json()) as NegotiationRunResponse;
-      setNegotiationResult(payload);
-      setNegotiationError(null);
-    } catch (err) {
-      setNegotiationError(err instanceof Error ? err.message : "Negotiation request failed.");
-    } finally {
-      setNegotiationLoading(false);
-    }
-  };
 
   const pushDemoMessage = (role: DemoMessage["role"], text: string) => {
     setDemoMessages((previous) => [
@@ -335,22 +195,22 @@ export default function DashboardHome() {
 
   const runDemoFlow = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!demoInput.trim() || demoBusy) {
+    const cleanMessage = demoInput.trim();
+    if (!cleanMessage || demoBusy) {
       return;
     }
 
-    const cleanMessage = demoInput.trim();
     setDemoBusy(true);
     setDemoDecision("pending");
     setDemoActionCard(null);
     setDemoMessages([]);
 
     pushDemoMessage("user", cleanMessage);
-    await waitStep(500);
+    await waitStep(400);
     pushDemoMessage("system", "Parsing intent from unstructured message...");
-    await waitStep(900);
+    await waitStep(800);
     pushDemoMessage("agent", "Stock out at primary vendor. Initiating self-healing protocol...");
-    await waitStep(900);
+    await waitStep(800);
     pushDemoMessage("agent", "Contacting 3 local suppliers and ranking negotiated offers...");
 
     try {
@@ -364,8 +224,8 @@ export default function DashboardHome() {
           message: cleanMessage,
           metadata: {
             channel: "demo_mode",
-            workspace: mode,
-            entry_point: "action_card_demo"
+            entry_point: "action_card_demo",
+            workflow: "judge_demo"
           }
         })
       });
@@ -375,13 +235,13 @@ export default function DashboardHome() {
       }
 
       const payload = (await response.json()) as NegotiationRunResponse;
-      setNegotiationResult(payload);
-      setNegotiationError(null);
-
       const seller = payload.negotiation?.selected_seller?.name ?? "Backup Supplier Network";
       const summary = payload.negotiation?.summary ?? payload.assistant_reply;
-      const details = `${summary} Route: ${payload.route}.`;
-      setDemoActionCard({ title: `Best offer ready from ${seller}`, details, taskId: payload.task.id });
+      setDemoActionCard({
+        title: `Best offer ready from ${seller}`,
+        details: `${summary} Route: ${payload.route}.`,
+        taskId: payload.task.id
+      });
       pushDemoMessage("agent", "Proposal ready. Review the action card and approve to send.");
     } catch (err) {
       const fallbackId = `demo-${Date.now()}`;
@@ -432,9 +292,18 @@ export default function DashboardHome() {
     if (!demoActionCard || demoDecision !== "pending") {
       return;
     }
+
     setDemoDecision("rejected");
     pushDemoMessage("system", "Proposal rejected. Agent will request alternate terms.");
   };
+
+  const agentState = systemStatus ? prettyLabel(systemStatus.overall) : "Loading";
+  const taskCount = tasks.length;
+  const pendingCount = tasks.filter((task) => task.status === "pending_human").length;
+  const completedCount = tasks.filter((task) => task.status === "completed").length;
+  const serviceSummary = systemStatus?.services ?? [];
+  const activeStage = demoStages.find((stage) => stage.id === expandedStageId) ?? null;
+  const liveClock = currentTime ? currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "--:--";
 
   return (
     <main className="control-room-shell">
@@ -449,100 +318,103 @@ export default function DashboardHome() {
           </span>
           <div>
             <p className="brand-kicker">Blue control room</p>
-            <h1>Business workflow automation</h1>
+            <h1>Chat-first workflow dashboard</h1>
           </div>
         </div>
 
         <div className="control-actions">
-          <label className="view-switcher">
-            <span>View</span>
-            <select value={mode} onChange={(event) => setMode(event.target.value as ViewMode)}>
-              {viewModes.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <span className={`connection-badge ${systemStatus ? "online" : "loading"}`}>
-            API {API_HOST}
+          <span className={`connection-badge ${systemStatus ? statusTone(systemStatus.overall) : "loading"}`}>
+            Live agent {agentState}
           </span>
-
-          <Link className="secondary-action" href="/operations">
-            Open operations
+          <Link className="secondary-action" href="/settings">
+            Settings
           </Link>
         </div>
       </header>
 
       <section className="control-hero">
         <div className="control-hero-copy">
-          <span className="eyebrow">From-scratch frontend build</span>
-          <h2>{selectedMode.description}</h2>
+          <span className="eyebrow">Perfect demo flow</span>
+          <h2>Unstructured message to structured action</h2>
           <p>
-            This version keeps the backend integration, but the interface is rebuilt as a cleaner blue command surface for live task routing, system telemetry, and negotiation runs.
+            The homepage stays focused on chat. The backend controls and system panels live in Settings so judges only see the story.
           </p>
 
           <div className="hero-actions">
-            <a className="primary-action" href="#signal-grid">
-              View live signal
+            <a className="primary-action" href="#workflow-demo">
+              Jump to chat
             </a>
-            <a className="secondary-action" href="#negotiation-studio">
-              Try negotiation
+            <a className="secondary-action" href="#story-cards">
+              See workflow stages
             </a>
           </div>
 
           <div className="hero-metrics">
             <div className="metric-card-alt">
-              <span>Total tasks</span>
-              <strong>{heroMetrics.total}</strong>
+              <span>Workflow tasks</span>
+              <strong>{taskCount}</strong>
             </div>
             <div className="metric-card-alt">
               <span>Completed</span>
-              <strong>{heroMetrics.completed}</strong>
+              <strong>{completedCount}</strong>
             </div>
             <div className="metric-card-alt">
               <span>Pending</span>
-              <strong>{heroMetrics.pending}</strong>
+              <strong>{pendingCount}</strong>
             </div>
             <div className="metric-card-alt">
-              <span>Success rate</span>
-              <strong>{heroMetrics.successRate}%</strong>
+              <span>Last sync</span>
+              <strong>{liveClock}</strong>
             </div>
           </div>
         </div>
 
-        <div className="control-hero-panel glass-card deep">
+        <div className="control-hero-panel glass-card deep" id="story-cards">
           <div className="panel-headline">
             <div>
-              <span className="panel-tag">Current mode</span>
-              <h3>{selectedMode.label}</h3>
+              <span className="panel-tag">Expandable story</span>
+              <h3>Click a stage to expand</h3>
             </div>
             <span className={`status-chip ${systemStatus ? statusTone(systemStatus.overall) : "warn"}`}>
               {systemStatus ? prettyLabel(systemStatus.overall) : "Loading"}
             </span>
           </div>
 
-          <div className="radar-panel">
-            <div className="radar-panel-core">
-              <strong>{(heroMetrics.avgConfidence * 100).toFixed(1)}%</strong>
-              <span>confidence</span>
-            </div>
-            <div className="radar-panel-ring radar-panel-ring-a" />
-            <div className="radar-panel-ring radar-panel-ring-b" />
-            <div className="radar-panel-ring radar-panel-ring-c" />
+          <div className="stage-strip">
+            {demoStages.map((stage) => (
+              <button
+                key={stage.id}
+                type="button"
+                className={`stage-card ${expandedStageId === stage.id ? "expanded" : ""}`}
+                onClick={() => setExpandedStageId(expandedStageId === stage.id ? null : stage.id)}
+              >
+                <strong>{stage.title}</strong>
+                <span>{stage.detail}</span>
+                {expandedStageId === stage.id ? <p>{stage.expandedDetail}</p> : null}
+              </button>
+            ))}
           </div>
 
-          <div className="status-board">
-            {activeServices.map((service) => (
-              <article key={service.name} className="status-board-item">
-                <div>
-                  <strong>{prettyLabel(service.name)}</strong>
-                  <p>{service.detail}</p>
-                </div>
-                <span className={`status-chip ${statusTone(service.state)}`}>{prettyLabel(service.state)}</span>
-              </article>
-            ))}
+          {activeStage ? (
+            <div className="stage-detail-line">
+              <strong>{activeStage.title}</strong>
+              <span>{activeStage.expandedDetail}</span>
+            </div>
+          ) : null}
+
+          <div className="status-board compact">
+            <article className="status-board-item">
+              <div>
+                <strong>How it works</strong>
+                <p>Type a request, watch the staged reasoning, and approve the final action card.</p>
+              </div>
+            </article>
+            <article className="status-board-item">
+              <div>
+                <strong>Workflow</strong>
+                <p>Message in, intent parsed, self-heal triggered, proposal approved, task updated.</p>
+              </div>
+            </article>
           </div>
         </div>
       </section>
@@ -550,144 +422,22 @@ export default function DashboardHome() {
       <section className="status-ribbon" aria-label="Live status ribbon">
         <article className="status-ribbon-item">
           <span>Frontend</span>
-          <strong>Ready</strong>
-          <p>Blue control room on port 3000</p>
+          <strong>Chat-first</strong>
+          <p>Homepage is focused on the demo story only.</p>
         </article>
         <article className="status-ribbon-item">
           <span>Backend</span>
-          <strong>{systemStatus ? prettyLabel(systemStatus.overall) : "Syncing"}</strong>
-          <p>{apiLabel}</p>
+          <strong>{agentState}</strong>
+          <p>Settings holds the backend/system controls.</p>
         </article>
         <article className="status-ribbon-item">
-          <span>Workspace</span>
-          <strong>{selectedMode.label}</strong>
-          <p>{currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+          <span>Automation</span>
+          <strong>Ready to test</strong>
+          <p>{liveClock}</p>
         </article>
       </section>
 
-      <section className="signal-grid" id="signal-grid">
-        <article className="workspace-panel signal-panel">
-          <div className="panel-headline">
-            <div>
-              <span className="panel-tag">Live task feed</span>
-              <h3>Recent workflow decisions</h3>
-            </div>
-            {loading ? <span className="status-chip warn">Syncing</span> : null}
-          </div>
-
-          <div className="task-stack">
-            {liveTasks.map((task) => (
-              <article key={task.id} className="task-item">
-                <div className="task-item-top">
-                  <div>
-                    <strong>{prettyLabel(task.intent)}</strong>
-                    <p>{task.message}</p>
-                  </div>
-                  <span className={`status-chip ${statusTone(task.status)}`}>{prettyLabel(task.status)}</span>
-                </div>
-                <div className="task-item-meta">
-                  <span>{prettyLabel(task.source)}</span>
-                  <span>{prettyLabel(task.mode)}</span>
-                  <span>{(task.confidence * 100).toFixed(0)}%</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </article>
-
-        <article className="workspace-panel signal-panel">
-          <div className="panel-headline">
-            <div>
-              <span className="panel-tag">Telemetry</span>
-              <h3>Execution and fallback pulse</h3>
-            </div>
-            <span className="status-chip good">{heroMetrics.fallbackSteps} fallback steps</span>
-          </div>
-
-          <MiniSparkline values={confidenceSeries} />
-
-          <div className="bucket-columns compact">
-            <div>
-              <h4>Top intents</h4>
-              {topIntents.map((bucket) => (
-                <div key={bucket.label} className="bucket-row">
-                  <strong>{bucket.label}</strong>
-                  <span>{bucket.value}</span>
-                </div>
-              ))}
-            </div>
-            <div>
-              <h4>Sources</h4>
-              {topSources.map((bucket) => (
-                <div key={bucket.label} className="bucket-row">
-                  <strong>{bucket.label}</strong>
-                  <span>{bucket.value}</span>
-                </div>
-              ))}
-            </div>
-            <div>
-              <h4>Execution mix</h4>
-              {executionMix.map((bucket) => (
-                <div key={bucket.label} className="bucket-row">
-                  <strong>{bucket.label}</strong>
-                  <span>{bucket.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </article>
-
-        <article className="workspace-panel signal-panel">
-          <div className="panel-headline">
-            <div>
-              <span className="panel-tag">System timeline</span>
-              <h3>Backend events and warm state</h3>
-            </div>
-            <span className="status-chip good">{models?.configured_model ?? "Loading"}</span>
-          </div>
-
-          <div className="timeline">
-            {history.map((item) => (
-              <div key={`${item.service}-${item.changed_at}`} className="timeline-item">
-                <span className={`dot ${statusTone(item.state)}`} />
-                <div>
-                  <strong>{prettyLabel(item.service)}</strong>
-                  <p>{item.detail}</p>
-                  <small>{formatTime(item.changed_at)}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="workspace-panel signal-panel">
-          <div className="panel-headline">
-            <div>
-              <span className="panel-tag">Model lab</span>
-              <h3>Configured model inventory</h3>
-            </div>
-            <span className="status-chip good">{models?.models?.length ?? 0} models</span>
-          </div>
-
-          <div className="model-lab-compact">
-            <div className="glass-card deep compact-card">
-              <span className="panel-tag">Current model</span>
-              <h4>{models?.configured_model ?? "Loading..."}</h4>
-              <p>Managed by the backend and refreshed on load.</p>
-            </div>
-            <div className="glass-card deep compact-card">
-              <span className="panel-tag">Available models</span>
-              <div className="model-list compact">
-                {(models?.models ?? []).map((model) => (
-                  <span key={model}>{model}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section className="workflow-grid" id="negotiation-studio">
+      <section className="workflow-grid" id="workflow-demo">
         <article className="workspace-panel negotiation-panel">
           <span className="panel-tag">Demo command center</span>
           <h3>Unstructured message to structured action</h3>
@@ -700,14 +450,14 @@ export default function DashboardHome() {
               value={demoInput}
               onChange={(event) => setDemoInput(event.target.value)}
               rows={5}
-              placeholder="Order 50kg Tomatoes for tomorrow."
+              placeholder="Order 50kg tomatoes for tomorrow."
             />
             <button className="primary-action" type="submit" disabled={demoBusy}>
               {demoBusy ? "Running demo..." : "Run perfect demo flow"}
             </button>
           </form>
 
-          {negotiationError ? <p className="error-line">{negotiationError}</p> : null}
+          {error ? <p className="error-line">{error}</p> : null}
         </article>
 
         <article className="workspace-panel negotiation-panel">
@@ -731,10 +481,20 @@ export default function DashboardHome() {
               <h4>{demoActionCard.title}</h4>
               <p>{demoActionCard.details}</p>
               <div className="action-card-buttons">
-                <button type="button" className="action-reject" onClick={handleDemoReject} disabled={demoDecision !== "pending"}>
+                <button
+                  type="button"
+                  className="action-reject"
+                  onClick={handleDemoReject}
+                  disabled={demoDecision !== "pending"}
+                >
                   Reject
                 </button>
-                <button type="button" className="action-approve" onClick={handleDemoApprove} disabled={demoDecision !== "pending"}>
+                <button
+                  type="button"
+                  className="action-approve"
+                  onClick={handleDemoApprove}
+                  disabled={demoDecision !== "pending"}
+                >
                   Approve and send
                 </button>
               </div>
@@ -744,7 +504,15 @@ export default function DashboardHome() {
         </article>
       </section>
 
-      {error ? <p className="error-line control-error">{error}</p> : null}
+      <section className="home-footer-row">
+        {serviceSummary.map((service) => (
+          <article key={service.name} className="home-footer-chip">
+            <strong>{prettyLabel(service.name)}</strong>
+            <span>{prettyLabel(service.state)}</span>
+            <p>{service.detail}</p>
+          </article>
+        ))}
+      </section>
     </main>
   );
 }

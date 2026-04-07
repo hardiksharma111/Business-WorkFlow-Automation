@@ -2417,6 +2417,227 @@ a {
   font-size: 0.9rem;
 }
 
+.stage-strip {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.stage-card {
+  width: 100%;
+  text-align: left;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.stage-card strong {
+  display: block;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1rem;
+}
+
+.stage-card span,
+.stage-card p,
+.stage-detail-line span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.stage-card.expanded {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(59, 130, 246, 0.09);
+}
+
+.stage-detail-line {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stage-detail-line strong {
+  font-family: var(--font-heading), sans-serif;
+}
+
+.home-footer-row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.home-footer-chip {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(10, 18, 36, 0.96), rgba(7, 14, 28, 0.9));
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.38);
+  border-radius: 24px;
+  padding: 16px 18px;
+}
+
+.home-footer-chip strong {
+  display: block;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.home-footer-chip span {
+  display: inline-flex;
+  margin-top: 8px;
+  color: #9fd0ff;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.76rem;
+}
+
+.home-footer-chip p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.settings-shell {
+  width: min(1240px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 28px 0 56px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
+.settings-header p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  max-width: 58ch;
+  line-height: 1.65;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-card {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(10, 18, 36, 0.96), rgba(7, 14, 28, 0.9));
+  border-radius: 28px;
+  padding: 20px;
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.38);
+}
+
+.settings-card h2 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.35rem;
+}
+
+.settings-card > p {
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+
+.settings-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.settings-row,
+.settings-stat,
+.settings-details {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+.settings-row,
+.settings-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-row span,
+.settings-details p,
+.settings-details summary span {
+  color: var(--muted);
+}
+
+.settings-details {
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-details summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px;
+}
+
+.settings-details p {
+  margin: 0;
+  padding: 0 12px 12px;
+  line-height: 1.55;
+}
+
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pill-list span {
+  border-radius: 999px;
+  padding: 8px 12px;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  background: rgba(96, 165, 250, 0.08);
+  color: #dbeafe;
+}
+
+.compact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-stat strong {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 @media (max-width: 1100px) {
   .control-topbar,
   .control-hero,
@@ -2490,5 +2711,10 @@ a {
   .radar-panel-ring-c {
     width: 330px;
     height: 330px;
+  }
+
+  .home-footer-row,
+  .stage-strip {
+    grid-template-columns: 1fr;
   }
 }

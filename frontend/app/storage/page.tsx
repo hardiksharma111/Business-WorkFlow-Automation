@@ -1,66 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
-
-type StorageItem = {
-  id: string;
-  sku: string;
-  itemName: string;
-  bin: string;
-  section: string;
-  onHand: number;
-  reserved: number;
-  reorderPoint: number;
-  expiry: string;
-  condition: string;
-};
-
-const initialStorage: StorageItem[] = [
-  {
-    id: "storage-1",
-    sku: "FR-001",
-    itemName: "Tomatoes",
-    bin: "A-12",
-    section: "Cold storage",
-    onHand: 128,
-    reserved: 22,
-    reorderPoint: 40,
-    expiry: "2026-04-12",
-    condition: "Fresh"
-  },
-  {
-    id: "storage-2",
-    sku: "GR-114",
-    itemName: "Green beans",
-    bin: "B-03",
-    section: "Dry goods",
-    onHand: 84,
-    reserved: 18,
-    reorderPoint: 30,
-    expiry: "2026-04-16",
-    condition: "Stable"
-  },
-  {
-    id: "storage-3",
-    sku: "SP-221",
-    itemName: "Packaging sleeves",
-    bin: "C-07",
-    section: "Packing",
-    onHand: 260,
-    reserved: 64,
-    reorderPoint: 80,
-    expiry: "2026-07-01",
-    condition: "Healthy"
-  }
-];
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { StorageItem, createClientId, loadStorageItems, saveStorageItems } from "../../lib/ops-data";
 
 function lowStock(items: StorageItem[]): StorageItem[] {
   return items.filter((item) => item.onHand <= item.reorderPoint);
 }
 
 export default function StoragePage() {
-  const [items, setItems] = useState<StorageItem[]>(initialStorage);
+  const [items, setItems] = useState<StorageItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
   const [itemName, setItemName] = useState("Bell peppers");
   const [sku, setSku] = useState("FR-009");
   const [bin, setBin] = useState("A-08");
@@ -70,6 +24,50 @@ export default function StoragePage() {
   const [reorderPoint, setReorderPoint] = useState(24);
   const [expiry, setExpiry] = useState("2026-04-20");
   const [condition, setCondition] = useState("Fresh");
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setItems(loadStorageItems());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+    saveStorageItems(items);
+  }, [items, hydrated]);
+
+  const resetForm = () => {
+    setEditingItemId(null);
+    setItemName("Bell peppers");
+    setSku("FR-009");
+    setBin("A-08");
+    setSection("Cold storage");
+    setOnHand(48);
+    setReserved(6);
+    setReorderPoint(24);
+    setExpiry("2026-04-20");
+    setCondition("Fresh");
+  };
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const matchesQuery =
+        !searchQuery ||
+        `${item.itemName} ${item.sku} ${item.bin} ${item.section}`
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+      const matchesSection = sectionFilter === "all" || item.section === sectionFilter;
+      const isLowStock = item.onHand <= item.reorderPoint;
+      const matchesStock = stockFilter === "all" || (stockFilter === "low" ? isLowStock : !isLowStock);
+      return matchesQuery && matchesSection && matchesStock;
+    });
+  }, [items, searchQuery, sectionFilter, stockFilter]);
+
+  const uniqueSections = useMemo(() => {
+    return ["all", ...new Set(items.map((item) => item.section))];
+  }, [items]);
 
   const totals = useMemo(() => {
     const totalUnits = items.reduce((sum, item) => sum + item.onHand, 0);
@@ -81,13 +79,13 @@ export default function StoragePage() {
   }, [items]);
 
   const binCards = useMemo(() => {
-    return items.map((item) => ({
+    return filteredItems.map((item) => ({
       title: `${item.bin} · ${item.section}`,
       subtitle: item.itemName,
       fill: Math.min(100, Math.round((item.onHand / Math.max(item.reorderPoint, item.onHand)) * 100)),
       detail: `${item.onHand} on hand · ${item.reserved} reserved`
     }));
-  }, [items]);
+  }, [filteredItems]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,21 +93,58 @@ export default function StoragePage() {
       return;
     }
 
-    setItems((previous) => [
-      {
-        id: `storage-${Date.now()}`,
-        itemName: itemName.trim(),
-        sku: sku.trim(),
-        bin: bin.trim(),
-        section: section.trim(),
-        onHand,
-        reserved,
-        reorderPoint,
-        expiry,
-        condition
-      },
-      ...previous
-    ]);
+    const payload: StorageItem = {
+      id: editingItemId ?? createClientId("storage"),
+      itemName: itemName.trim(),
+      sku: sku.trim(),
+      bin: bin.trim(),
+      section: section.trim(),
+      onHand,
+      reserved,
+      reorderPoint,
+      expiry,
+      condition,
+      createdAt: new Date().toISOString()
+    };
+
+    setItems((previous) => {
+      if (!editingItemId) {
+        return [payload, ...previous];
+      }
+      return previous.map((item) => (item.id === editingItemId ? payload : item));
+    });
+
+    resetForm();
+  };
+
+  const handleEdit = (item: StorageItem) => {
+    setEditingItemId(item.id);
+    setItemName(item.itemName);
+    setSku(item.sku);
+    setBin(item.bin);
+    setSection(item.section);
+    setOnHand(item.onHand);
+    setReserved(item.reserved);
+    setReorderPoint(item.reorderPoint);
+    setExpiry(item.expiry);
+    setCondition(item.condition);
+  };
+
+  const handleDelete = (id: string) => {
+    setItems((previous) => previous.filter((item) => item.id !== id));
+    if (editingItemId === id) {
+      resetForm();
+    }
+  };
+
+  const adjustStock = (id: string, change: number) => {
+    setItems((previous) =>
+      previous.map((item) =>
+        item.id === id
+          ? { ...item, onHand: Math.max(0, item.onHand + change) }
+          : item
+      )
+    );
   };
 
   return (
@@ -135,6 +170,12 @@ export default function StoragePage() {
         </div>
       </header>
 
+      <nav className="operator-tabs" aria-label="Operator navigation">
+        <Link href="/vendors" className="tab-link">Vendors</Link>
+        <Link href="/storage" className="tab-link active">Storage</Link>
+        <Link href="/settings" className="tab-link">Settings</Link>
+      </nav>
+
       <section className="operator-stats">
         <article className="operator-stat-card">
           <span>Current storage</span>
@@ -153,10 +194,33 @@ export default function StoragePage() {
         </article>
       </section>
 
+      <section className="operator-panel operator-controls">
+        <label>
+          Search
+          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search item, SKU, bin" />
+        </label>
+        <label>
+          Section
+          <select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)}>
+            {uniqueSections.map((entry) => (
+              <option key={entry} value={entry}>{entry === "all" ? "All sections" : entry}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Stock state
+          <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)}>
+            <option value="all">All items</option>
+            <option value="low">Low stock only</option>
+            <option value="healthy">Healthy stock only</option>
+          </select>
+        </label>
+      </section>
+
       <section className="operator-grid split-grid">
         <article className="operator-panel">
           <span className="panel-tag">Receive stock</span>
-          <h2>Manual warehouse entry</h2>
+          <h2>{editingItemId ? "Edit warehouse item" : "Manual warehouse entry"}</h2>
           <form className="vendor-form" onSubmit={handleSubmit}>
             <div className="form-grid">
               <label>
@@ -196,7 +260,12 @@ export default function StoragePage() {
               Condition
               <input value={condition} onChange={(event) => setCondition(event.target.value)} placeholder="Fresh" />
             </label>
-            <button className="primary-action" type="submit">Store item</button>
+            <div className="row-actions">
+              <button className="primary-action" type="submit">{editingItemId ? "Update item" : "Store item"}</button>
+              {editingItemId ? (
+                <button className="secondary-action" type="button" onClick={resetForm}>Cancel edit</button>
+              ) : null}
+            </div>
           </form>
         </article>
 
@@ -240,10 +309,11 @@ export default function StoragePage() {
                 <th>Reorder</th>
                 <th>Expiry</th>
                 <th>Condition</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.sku}</td>
                   <td>
@@ -256,6 +326,14 @@ export default function StoragePage() {
                   <td>{item.reorderPoint}</td>
                   <td>{item.expiry}</td>
                   <td>{item.condition}</td>
+                  <td>
+                    <div className="row-actions compact">
+                      <button className="secondary-action" type="button" onClick={() => adjustStock(item.id, 10)}>+10</button>
+                      <button className="secondary-action" type="button" onClick={() => adjustStock(item.id, -10)}>-10</button>
+                      <button className="secondary-action" type="button" onClick={() => handleEdit(item)}>Edit</button>
+                      <button className="secondary-action" type="button" onClick={() => handleDelete(item.id)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -267,8 +345,8 @@ export default function StoragePage() {
         <span className="panel-tag">Alerts</span>
         <h2>Stock to review</h2>
         <div className="alert-list">
-          {lowStock(items).length ? (
-            lowStock(items).map((item) => (
+          {lowStock(filteredItems).length ? (
+            lowStock(filteredItems).map((item) => (
               <article key={item.id} className="alert-card">
                 <strong>{item.itemName}</strong>
                 <p>{item.onHand} units remain in {item.bin}. Reorder point is {item.reorderPoint}.</p>

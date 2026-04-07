@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { StorageItem, VendorRecord, loadStorageItems, loadVendors } from "../lib/ops-data";
 
 type ServiceStatus = {
   name: string;
@@ -200,6 +201,8 @@ export default function DashboardHome() {
   const [demoDecision, setDemoDecision] = useState<"pending" | "approved" | "rejected">("pending");
   const [expandedStageId, setExpandedStageId] = useState<string | null>("parse");
   const [negotiationView, setNegotiationView] = useState<DemoNegotiation>(emptyNegotiation);
+  const [opsVendors, setOpsVendors] = useState<VendorRecord[]>([]);
+  const [opsStorage, setOpsStorage] = useState<StorageItem[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -240,6 +243,19 @@ export default function DashboardHome() {
     setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const syncOperatorData = () => {
+      setOpsVendors(loadVendors());
+      setOpsStorage(loadStorageItems());
+    };
+
+    syncOperatorData();
+    window.addEventListener("focus", syncOperatorData);
+    return () => {
+      window.removeEventListener("focus", syncOperatorData);
+    };
   }, []);
 
   const pushDemoMessage = (role: DemoMessage["role"], text: string) => {
@@ -323,6 +339,13 @@ export default function DashboardHome() {
         taskId: payload.task.id
       });
       pushDemoMessage("agent", `Proposal ready. ${localVendors.length} local and ${onlineVendors.length} online vendors found.`);
+
+      const trustedVendor = opsVendors.find((vendor) => vendor.vendorName.toLowerCase() === seller.toLowerCase());
+      if (trustedVendor) {
+        pushDemoMessage("system", `Selected seller is already trusted in Vendor Desk (${trustedVendor.trustLevel}% trust).`);
+      } else {
+        pushDemoMessage("system", "Selected seller is not in Vendor Desk yet. Add it from the Vendors page after approval.");
+      }
     } catch (err) {
       const fallbackId = `demo-${Date.now()}`;
       const fallbackLocal: VendorLead[] = [
@@ -434,6 +457,13 @@ export default function DashboardHome() {
   const activeStage = demoStages.find((stage) => stage.id === expandedStageId) ?? null;
   const liveClock = currentTime ? currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const vendorLanes = buildVendorLanes(negotiationView);
+  const trustedVendorCount = opsVendors.filter((vendor) => vendor.status === "Approved").length;
+  const lowStockCount = opsStorage.filter((item) => item.onHand <= item.reorderPoint).length;
+  const totalStorageUnits = opsStorage.reduce((sum, item) => sum + item.onHand, 0);
+  const topTrustedVendor =
+    opsVendors
+      .filter((vendor) => vendor.status === "Approved")
+      .sort((left, right) => right.trustLevel - left.trustLevel)[0]?.vendorName ?? "No approved vendor";
 
   return (
     <main className="control-room-shell">
@@ -576,6 +606,33 @@ export default function DashboardHome() {
           <span>Automation</span>
           <strong>Ready to test</strong>
           <p>{liveClock}</p>
+        </article>
+      </section>
+
+      <section className="operator-link-grid">
+        <article className="operator-link-card">
+          <div className="operator-link-head">
+            <div>
+              <span className="panel-tag">Vendor desk sync</span>
+              <h3>{trustedVendorCount} approved vendors</h3>
+            </div>
+            <Link className="secondary-action" href="/vendors">
+              Manage vendors
+            </Link>
+          </div>
+          <p>Top trusted vendor: {topTrustedVendor}. The demo now checks if selected sellers exist in the vendor board.</p>
+        </article>
+        <article className="operator-link-card">
+          <div className="operator-link-head">
+            <div>
+              <span className="panel-tag">Storage sync</span>
+              <h3>{totalStorageUnits} units in warehouse</h3>
+            </div>
+            <Link className="secondary-action" href="/storage">
+              Open storage
+            </Link>
+          </div>
+          <p>{lowStockCount} low-stock bins currently need review. Use storage adjustments to keep the workflow healthy.</p>
         </article>
       </section>
 

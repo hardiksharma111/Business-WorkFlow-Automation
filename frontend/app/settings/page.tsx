@@ -152,6 +152,12 @@ export default function SettingsPage() {
         </div>
       </header>
 
+      <nav className="operator-tabs" aria-label="Operator navigation">
+        <Link href="/vendors" className="tab-link">Vendors</Link>
+        <Link href="/storage" className="tab-link">Storage</Link>
+        <Link href="/settings" className="tab-link active">Settings</Link>
+      </nav>
+
       <section className="settings-grid">
         <article className="settings-card">
           <h2>System status</h2>

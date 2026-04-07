@@ -2317,6 +2317,106 @@ a {
   margin-top: 16px;
 }
 
+.demo-chat-log {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.demo-chat-item {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+.demo-chat-item strong {
+  display: block;
+  font-family: var(--font-heading), sans-serif;
+  margin-bottom: 6px;
+}
+
+.demo-chat-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.demo-chat-item.user {
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.demo-chat-item.agent {
+  border-color: rgba(56, 189, 248, 0.28);
+}
+
+.demo-chat-item.system {
+  border-color: rgba(251, 191, 36, 0.34);
+}
+
+.action-card {
+  margin-top: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  background: linear-gradient(180deg, rgba(14, 24, 43, 0.96), rgba(8, 15, 26, 0.9));
+  padding: 16px;
+}
+
+.action-card-kicker {
+  margin: 0;
+  color: #7dd3fc;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.action-card h4 {
+  margin: 10px 0 8px;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.2rem;
+}
+
+.action-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.action-card-buttons {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.action-card-buttons button {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.action-card-buttons button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action-reject {
+  border-color: rgba(248, 113, 113, 0.45) !important;
+}
+
+.action-approve {
+  border-color: rgba(52, 211, 153, 0.5) !important;
+  background: rgba(16, 185, 129, 0.14) !important;
+}
+
+.action-card-status {
+  margin-top: 10px !important;
+  color: #cbd5e1 !important;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 1100px) {
   .control-topbar,
   .control-hero,

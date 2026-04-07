@@ -1,77 +1,119 @@
 # Business Workflow Automation
 
-A polished Next.js template for business workflow automation products and service pages.
+Business Workflow Automation is a chat-first operations platform that turns unstructured business messages into structured actions with human approval controls.
 
-## Start Here
+The app is built for fast demos and practical execution:
+- Chat-first command center UX
+- AI routing and negotiation fallback
+- Approval-ready action flow
+- Live system observability
 
-- Main project brief: `PROJECT_BLUEPRINT.md`
+## Architecture
 
-## Implementation Status
+- Frontend: Next.js 16 + React 19 + TypeScript
+- Backend: FastAPI + Python
+- AI Services: Ollama, Hugging Face embeddings, ChromaDB
+- Workflow Engine: intent routing, negotiation handling, execution fallback
 
-- Frontend: Next.js dashboard home is implemented with a live AI chat console.
-- Backend: FastAPI MVP has been added in `backend/` with Ollama, Hugging Face embeddings, ChromaDB, and LangGraph negotiation routing.
-- Operations Dashboard: Live monitoring page is available at `/operations`.
-- Chat Intake: The home dashboard now sends WhatsApp Chrome-extension style messages to the AI chat API, and negotiation activates only when needed.
+## Repository Structure
 
-## Progress Snapshot
+- `frontend/`: primary frontend source (app routes and components)
+- `src/`: compatibility bridge for existing path expectations
+- `backend/`: API, workflow logic, services, and data store
+- `scripts/`: local startup and shutdown helpers
 
-- 2026-04-07: Added LangGraph negotiation flow with local-seller-first and online referral fallback.
-- 2026-04-07: Added `POST /api/v1/chat` as the default AI route with conditional negotiation fallback.
-- 2026-04-07: Updated dashboard UI to use normal AI chat path and show negotiation details only when triggered.
-- 2026-04-07: Completed Phase 2 execution layer with step-by-step workflow execution, fallback actions, and status updates for `intake-and-create` and connector ingestion.
-- 2026-04-07: Started Phase 3 observability with workflow analytics and dashboard telemetry panels.
-- 2026-04-07: Hardened Phase 3 analytics limits so telemetry endpoints stay bounded.
+## Local Development
 
-## Frontend API Integration
+### Prerequisites
 
-- Set `NEXT_PUBLIC_API_BASE` to the backend URL (default is `http://localhost:8000`).
-- Example on Windows PowerShell before `npm run dev`:
+- Node.js 20+
+- Python 3.11+
+- Windows PowerShell (for provided scripts)
+- Optional: local Ollama runtime for full AI behavior
+
+### 1. Install Frontend Dependencies
 
 ```powershell
-$env:NEXT_PUBLIC_API_BASE="http://localhost:8000"
+npm install
 ```
 
-## Backend Quick Start
+### 2. Set Up Backend Environment
 
-1. Open `backend/`.
-2. Create a Python virtual environment and activate it.
-3. Install dependencies:
-
-```bash
-pip install -r requirements.txt
+```powershell
+cd backend
+..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+copy .env.example .env
+cd ..
 ```
 
-4. Copy env values:
+### 3. Start Full Stack
 
-```bash
-cp .env.example .env
+```powershell
+npm run dev:up
 ```
 
-5. Run API:
+Expected URLs:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
 
-```bash
-uvicorn app.main:app --reload --port 8000
+### 4. Stop Full Stack
+
+```powershell
+npm run dev:down
 ```
 
-## Backend Endpoints
+## NPM Scripts
+
+- `npm run dev`: start Next.js app only
+- `npm run dev:up`: clean ports and start backend + frontend
+- `npm run dev:down`: stop listeners on ports 3000 and 8000
+- `npm run build`: production frontend build
+- `npm run lint`: run ESLint
+- `npm run test:api:smoke`: backend smoke tests
+- `npm run test:api:regression`: backend regression tests
+
+## Backend API Highlights
 
 - `GET /health`
+- `GET /api/v1/system/status`
+- `GET /api/v1/system/status/history`
+- `GET /api/v1/system/ollama/models`
 - `POST /api/v1/chat`
 - `POST /api/v1/negotiation/chat`
-- `POST /api/v1/knowledge/documents`
-- `POST /api/v1/knowledge/search`
-- `POST /api/v1/workflows/intake`
+- `POST /api/v1/workflows/intake-and-create`
+- `GET /api/v1/workflows/tasks`
+- `PATCH /api/v1/workflows/tasks/{task_id}`
+- `GET /api/v1/analytics/overview`
 
-## Stack
+## Demo Flow
 
-- Next.js 16
-- React 19
-- TypeScript
-- ESLint
+For a judge-friendly flow, use the command center demo panel:
+1. Enter an unstructured message
+2. Run the staged AI reasoning sequence
+3. Review the generated action card
+4. Approve or reject the proposed action
 
-## Scripts
+This demonstrates the core value clearly: unstructured input to structured execution with oversight.
 
-- `npm run dev` - start the development server
-- `npm run build` - create a production build
-- `npm run lint` - run ESLint
-- `npm run start` - run the production server
+## Troubleshooting
+
+### Backend does not start
+
+- Run `npm run dev:down`
+- Confirm no stale process is holding port 8000
+- Start again with `npm run dev:up`
+
+### Frontend cannot reach backend
+
+- Verify backend health at `http://localhost:8000/api/v1/system/status`
+- Confirm `NEXT_PUBLIC_API_BASE` is set to `http://localhost:8000`
+
+### Ollama unavailable
+
+- Core app can still run with fallback behavior
+- For full local model features, start Ollama and pull configured models
+
+## Notes
+
+- Keep `frontend/` as the primary UI source.
+- Use `src/` bridge files only for compatibility unless intentionally removing that bridge.

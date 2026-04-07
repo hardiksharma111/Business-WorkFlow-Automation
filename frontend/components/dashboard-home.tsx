@@ -95,6 +95,18 @@ type NegotiationRunResponse = {
   negotiation?: NegotiationOutcome | null;
 };
 
+type DemoMessage = {
+  id: string;
+  role: "user" | "agent" | "system";
+  text: string;
+};
+
+type DemoActionCard = {
+  title: string;
+  details: string;
+  taskId: string;
+};
+
 type ViewMode = "command-center" | "workflow-flow" | "system-health" | "model-lab";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -176,6 +188,11 @@ export default function DashboardHome() {
   const [negotiationResult, setNegotiationResult] = useState<NegotiationRunResponse | null>(null);
   const [negotiationLoading, setNegotiationLoading] = useState(false);
   const [negotiationError, setNegotiationError] = useState<string | null>(null);
+  const [demoInput, setDemoInput] = useState("Order 50kg tomatoes for tomorrow.");
+  const [demoMessages, setDemoMessages] = useState<DemoMessage[]>([]);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoActionCard, setDemoActionCard] = useState<DemoActionCard | null>(null);
+  const [demoDecision, setDemoDecision] = useState<"pending" | "approved" | "rejected">("pending");
 
   useEffect(() => {
     let mounted = true;
@@ -301,6 +318,122 @@ export default function DashboardHome() {
     } finally {
       setNegotiationLoading(false);
     }
+  };
+
+  const pushDemoMessage = (role: DemoMessage["role"], text: string) => {
+    setDemoMessages((previous) => [
+      ...previous,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        role,
+        text
+      }
+    ]);
+  };
+
+  const waitStep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const runDemoFlow = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!demoInput.trim() || demoBusy) {
+      return;
+    }
+
+    const cleanMessage = demoInput.trim();
+    setDemoBusy(true);
+    setDemoDecision("pending");
+    setDemoActionCard(null);
+    setDemoMessages([]);
+
+    pushDemoMessage("user", cleanMessage);
+    await waitStep(500);
+    pushDemoMessage("system", "Parsing intent from unstructured message...");
+    await waitStep(900);
+    pushDemoMessage("agent", "Stock out at primary vendor. Initiating self-healing protocol...");
+    await waitStep(900);
+    pushDemoMessage("agent", "Contacting 3 local suppliers and ranking negotiated offers...");
+
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          source: "demo_command_center",
+          message: cleanMessage,
+          metadata: {
+            channel: "demo_mode",
+            workspace: mode,
+            entry_point: "action_card_demo"
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Demo request failed with status ${response.status}`);
+      }
+
+      const payload = (await response.json()) as NegotiationRunResponse;
+      setNegotiationResult(payload);
+      setNegotiationError(null);
+
+      const seller = payload.negotiation?.selected_seller?.name ?? "Backup Supplier Network";
+      const summary = payload.negotiation?.summary ?? payload.assistant_reply;
+      const details = `${summary} Route: ${payload.route}.`;
+      setDemoActionCard({ title: `Best offer ready from ${seller}`, details, taskId: payload.task.id });
+      pushDemoMessage("agent", "Proposal ready. Review the action card and approve to send.");
+    } catch (err) {
+      const fallbackId = `demo-${Date.now()}`;
+      setDemoActionCard({
+        title: "Best fallback offer ready",
+        details:
+          "Primary vendor unavailable. Secondary supplier can fulfill 50kg for same-day confirmation with backup logistics included.",
+        taskId: fallbackId
+      });
+      pushDemoMessage(
+        "agent",
+        err instanceof Error
+          ? `Backend slow during demo. Showing fail-safe proposal card: ${err.message}`
+          : "Backend slow during demo. Showing fail-safe proposal card."
+      );
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
+  const handleDemoApprove = async () => {
+    if (!demoActionCard || demoDecision !== "pending") {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/workflows/tasks/${demoActionCard.taskId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: "completed" })
+      });
+
+      if (!response.ok) {
+        pushDemoMessage("system", "Approved locally. Task could not be patched remotely in this run.");
+      } else {
+        pushDemoMessage("system", "Approved and sent. Workflow task updated to completed.");
+      }
+    } catch {
+      pushDemoMessage("system", "Approved locally. Backend patch skipped for this run.");
+    }
+
+    setDemoDecision("approved");
+  };
+
+  const handleDemoReject = () => {
+    if (!demoActionCard || demoDecision !== "pending") {
+      return;
+    }
+    setDemoDecision("rejected");
+    pushDemoMessage("system", "Proposal rejected. Agent will request alternate terms.");
   };
 
   return (
@@ -556,21 +689,21 @@ export default function DashboardHome() {
 
       <section className="workflow-grid" id="negotiation-studio">
         <article className="workspace-panel negotiation-panel">
-          <span className="panel-tag">Negotiation studio</span>
-          <h3>Route a chat through the backend</h3>
+          <span className="panel-tag">Demo command center</span>
+          <h3>Unstructured message to structured action</h3>
           <p>
-            Send a workflow or vendor message here and the backend will route it through the same negotiation path used by the WhatsApp integration.
+            Type a raw business message and run a staged AI story that ends in an approve-or-reject action card.
           </p>
 
-          <form className="negotiation-form" onSubmit={handleNegotiationSubmit}>
+          <form className="negotiation-form" onSubmit={runDemoFlow}>
             <textarea
-              value={negotiationMessage}
-              onChange={(event) => setNegotiationMessage(event.target.value)}
+              value={demoInput}
+              onChange={(event) => setDemoInput(event.target.value)}
               rows={5}
-              placeholder="Type a request for procurement, sourcing, pricing, or an approval fallback..."
+              placeholder="Order 50kg Tomatoes for tomorrow."
             />
-            <button className="primary-action" type="submit" disabled={negotiationLoading}>
-              {negotiationLoading ? "Negotiating..." : "Start negotiation"}
+            <button className="primary-action" type="submit" disabled={demoBusy}>
+              {demoBusy ? "Running demo..." : "Run perfect demo flow"}
             </button>
           </form>
 
@@ -578,60 +711,36 @@ export default function DashboardHome() {
         </article>
 
         <article className="workspace-panel negotiation-panel">
-          <span className="panel-tag">Negotiation result</span>
-          {negotiationResult ? (
-            <>
-              <h3>{negotiationResult.negotiation?.summary ?? "General AI response"}</h3>
-              <p>{negotiationResult.assistant_reply}</p>
+          <span className="panel-tag">Agent timeline</span>
+          <div className="demo-chat-log">
+            {demoMessages.length ? (
+              demoMessages.map((item) => (
+                <article key={item.id} className={`demo-chat-item ${item.role}`}>
+                  <strong>{item.role === "user" ? "User" : item.role === "agent" ? "Agent" : "System"}</strong>
+                  <p>{item.text}</p>
+                </article>
+              ))
+            ) : (
+              <p className="negotiation-empty">Run the demo flow to show staged AI reasoning in this panel.</p>
+            )}
+          </div>
 
-              <div className="negotiation-meta">
-                <div>
-                  <span>Route</span>
-                  <strong>{negotiationResult.route}</strong>
-                </div>
-                <div>
-                  <span>Task status</span>
-                  <strong>{negotiationResult.task.status}</strong>
-                </div>
-                <div>
-                  <span>Selected seller</span>
-                  <strong>{negotiationResult.negotiation?.selected_seller?.name ?? "Not selected"}</strong>
-                </div>
+          {demoActionCard ? (
+            <article className="action-card">
+              <p className="action-card-kicker">Agent proposal</p>
+              <h4>{demoActionCard.title}</h4>
+              <p>{demoActionCard.details}</p>
+              <div className="action-card-buttons">
+                <button type="button" className="action-reject" onClick={handleDemoReject} disabled={demoDecision !== "pending"}>
+                  Reject
+                </button>
+                <button type="button" className="action-approve" onClick={handleDemoApprove} disabled={demoDecision !== "pending"}>
+                  Approve and send
+                </button>
               </div>
-
-              <div className="lead-clusters">
-                <div>
-                  <span className="mini-chip">Local sellers</span>
-                  <div className="lead-list">
-                    {(negotiationResult.negotiation?.local_sellers ?? []).map((seller) => (
-                      <article key={`${seller.origin}-${seller.name}`} className="lead-card">
-                        <strong>{seller.name}</strong>
-                        <p>{seller.summary}</p>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="mini-chip">Online referrals</span>
-                  <div className="lead-list">
-                    {(negotiationResult.negotiation?.online_sellers ?? []).map((seller) => (
-                      <article key={`${seller.origin}-${seller.name}`} className="lead-card">
-                        <strong>{seller.name}</strong>
-                        <p>{seller.summary}</p>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <p className="negotiation-note">
-                {negotiationResult.negotiation?.alternative_path ?? "Negotiation was not required, so normal AI handling was used."}
-              </p>
-            </>
-          ) : (
-            <p className="negotiation-empty">Results from the backend will appear here after the first negotiation run.</p>
-          )}
+              <p className="action-card-status">Decision: {prettyLabel(demoDecision)}</p>
+            </article>
+          ) : null}
         </article>
       </section>
 

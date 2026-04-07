@@ -1,19 +1,32 @@
 from __future__ import annotations
 
 import hashlib
+from typing import TYPE_CHECKING
 from typing import Iterable
 
-from sentence_transformers import SentenceTransformer
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 
 class EmbeddingService:
     def __init__(self, model_name: str) -> None:
         self._model_name = model_name
-        self._model: SentenceTransformer | None = None
+        self._model: "SentenceTransformer | None" = None
 
-    def _ensure_model(self) -> SentenceTransformer:
+    def _load_sentence_transformer(self):
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            return SentenceTransformer
+        except Exception:
+            return None
+
+    def _ensure_model(self):
         if self._model is None:
-            self._model = SentenceTransformer(self._model_name)
+            sentence_transformer_cls = self._load_sentence_transformer()
+            if sentence_transformer_cls is None:
+                raise RuntimeError("sentence-transformers dependency is unavailable")
+            self._model = sentence_transformer_cls(self._model_name)
         return self._model
 
     def _fallback_embedding(self, text: str, dims: int = 64) -> list[float]:

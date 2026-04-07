@@ -3,7 +3,7 @@
 This backend provides a starter implementation for:
 
 - Intent and entity extraction using Ollama
-- Embedding generation using a Hugging Face model
+- Embedding generation using a Hugging Face model (optional in deployment; fallback embeddings are available)
 - Semantic memory and retrieval using ChromaDB
 - Confidence-based workflow decisioning
 - LangGraph negotiation routing with fallback seller referral
@@ -15,6 +15,12 @@ This backend provides a starter implementation for:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Optional local quality upgrade for semantic embeddings:
+
+```bash
+pip install sentence-transformers==3.4.1
 ```
 
 3. Copy env file and adjust values:

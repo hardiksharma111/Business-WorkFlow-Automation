@@ -13,3 +13,4 @@ backend/data/
 .env.production.local
 npm-debug.log*
 .DS_Store
+PROJECT_BLUEPRINT.md

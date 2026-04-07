@@ -27,7 +27,9 @@ The current product direction also adds negotiation intelligence, so when a requ
 | Local LLM Runtime | Ollama | Cost-controlled local inference and privacy-friendly execution |
 | Model Hub / Embeddings | Hugging Face | Flexible model selection for embeddings and task-specific NLP |
 | Vector Database | ChromaDB | Semantic memory and retrieval for workflow context |
-| API / Orchestration | Python services + LangGraph | Agent logic, tool execution, negotiation branching, and integrations |
+| API / Orchestration | FastAPI + Python services | Core intake, decisioning, execution, and task lifecycle |
+| Graph Orchestration (Scoped) | LangGraph | Negotiation-only orchestration (seller search and fallback routing) |
+| Deployment Target | Vercel + Railway | Frontend hosting on Vercel, backend API hosting on Railway |
 
 ## 4. Architecture Snapshot
 
@@ -158,7 +160,12 @@ Every workflow should include timeout, escalation owner, and retry strategy.
 
 ## 10. Current Scope Notes
 
-- This repository currently contains the frontend template and project direction.
-- Backend orchestration, connectors, and model service hardening are the next active implementation tracks.
-- The active build now includes a LangGraph-backed negotiation flow, WhatsApp Chrome-extension style chat intake, and online seller referral fallback.
-- Phase 3 now focuses on observability: analytics, telemetry, and confidence/fallback reporting across backend and frontend.
+- Active app includes:
+    - chat-first dashboard,
+    - settings backend control/status page,
+    - vendor operations page,
+    - storage operations page.
+- LangGraph is currently used only for negotiation graph orchestration.
+- Intake, workflow execution, and task lifecycle outside negotiation are currently direct FastAPI/Python service flows.
+- Deployment plan is Vercel (frontend) + Railway (backend).
+- Next track after deployment: broaden graph-based orchestration beyond negotiation and add deeper observability.

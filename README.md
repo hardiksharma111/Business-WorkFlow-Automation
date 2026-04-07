@@ -15,6 +15,13 @@ The app is built for fast demos and practical execution:
 - AI Services: Ollama, Hugging Face embeddings, ChromaDB
 - Workflow Engine: intent routing, negotiation handling, execution fallback
 
+### LangGraph Status (Current)
+
+- LangGraph is currently used in the negotiation path (`backend/app/services/negotiation.py`) to orchestrate:
+	- classify -> local seller search -> negotiation -> optional online referral -> finalize.
+- The rest of the workflow engine (intake, decisioning, execution, task status updates) is implemented as direct service logic in FastAPI/Python.
+- Planned expansion: move more end-to-end workflow orchestration into graph-based flows after deployment stabilization.
+
 ## Repository Structure
 
 - `frontend/`: primary frontend source (app routes and components)
@@ -71,6 +78,45 @@ npm run dev:down
 - `npm run lint`: run ESLint
 - `npm run test:api:smoke`: backend smoke tests
 - `npm run test:api:regression`: backend regression tests
+
+## Deployment (Vercel + Railway)
+
+### Free Tier Reality
+
+- Vercel: Hobby plan is free for personal/non-commercial use and is usually enough for demos.
+- Railway: no long-running fully free tier. It typically provides trial credits, then becomes paid.
+
+If you need fully free backend hosting after trial, consider Render/Fly alternatives.
+
+### 1. Deploy Backend First (Railway)
+
+1. Create a Railway project from this repo, backend service rooted at `backend/`.
+2. Set start command:
+	- `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+3. Add environment variables (Railway service settings):
+	- `OLLAMA_HOST`
+	- `OLLAMA_MODEL`
+	- `HF_EMBEDDING_MODEL`
+	- `CHROMA_PERSIST_PATH`
+	- `CHROMA_COLLECTION`
+	- `AUTO_EXECUTE_THRESHOLD`
+	- `SUGGEST_ONLY_THRESHOLD`
+	- `CORS_ORIGINS` (comma-separated; include Vercel URL)
+4. Deploy and confirm API health at `/health` and `/api/v1/system/status`.
+
+### 2. Deploy Frontend (Vercel)
+
+1. Import this repo in Vercel.
+2. Set project root to repository root (Next app is already configured here).
+3. Add environment variable:
+	- `NEXT_PUBLIC_API_BASE=https://<your-railway-api-domain>`
+4. Deploy and verify routes: `/`, `/settings`, `/vendors`, `/storage`.
+
+### 3. CORS for Production
+
+Set backend `CORS_ORIGINS` to include your Vercel production URL (and preview URL pattern if needed), for example:
+
+`CORS_ORIGINS=https://your-app.vercel.app,http://localhost:3000`
 
 ## Backend API Highlights
 

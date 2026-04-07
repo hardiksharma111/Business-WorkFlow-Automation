@@ -72,6 +72,14 @@ function prettyLabel(value: string): string {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+const backendSurfaces = [
+  { label: "Chat route", value: "/api/v1/chat", detail: "Negotiation and demo runs" },
+  { label: "Task patching", value: "/api/v1/workflows/tasks/{id}", detail: "Approve or complete actions" },
+  { label: "System status", value: "/api/v1/system/status", detail: "Service health and uptime" },
+  { label: "Analytics", value: "/api/v1/analytics/overview", detail: "Workflow metrics and trends" },
+  { label: "Model lab", value: "/api/v1/system/ollama/models", detail: "Configured and available models" }
+];
+
 export default function SettingsPage() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [analytics, setAnalytics] = useState<WorkflowAnalyticsResponse | null>(null);
@@ -131,9 +139,17 @@ export default function SettingsPage() {
             All operational controls live here. The homepage stays focused on the chat demo.
           </p>
         </div>
-        <Link className="secondary-action" href="/">
-          Back to dashboard
-        </Link>
+        <div className="settings-actions">
+          <Link className="secondary-action" href="/vendors">
+            Vendors
+          </Link>
+          <Link className="secondary-action" href="/storage">
+            Storage
+          </Link>
+          <Link className="secondary-action" href="/">
+            Back to dashboard
+          </Link>
+        </div>
       </header>
 
       <section className="settings-grid">
@@ -156,6 +172,22 @@ export default function SettingsPage() {
           <div className="pill-list">
             {(models?.models ?? []).map((model) => (
               <span key={model}>{model}</span>
+            ))}
+          </div>
+        </article>
+
+        <article className="settings-card">
+          <h2>Backend surfaces</h2>
+          <p>All key backend endpoints and their job in the demo flow.</p>
+          <div className="settings-list">
+            {backendSurfaces.map((surface) => (
+              <div key={surface.label} className="settings-row">
+                <div>
+                  <strong>{surface.label}</strong>
+                  <span>{surface.detail}</span>
+                </div>
+                <code>{surface.value}</code>
+              </div>
             ))}
           </div>
         </article>

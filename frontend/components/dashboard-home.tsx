@@ -456,6 +456,12 @@ export default function DashboardHome() {
           <span className={`connection-badge ${systemStatus ? statusTone(systemStatus.overall) : "loading"}`}>
             Live agent {agentState}
           </span>
+          <Link className="secondary-action" href="/vendors">
+            Vendors
+          </Link>
+          <Link className="secondary-action" href="/storage">
+            Storage
+          </Link>
           <Link className="secondary-action" href="/settings">
             Settings
           </Link>
@@ -474,6 +480,12 @@ export default function DashboardHome() {
             <a className="primary-action" href="#workflow-demo">
               Jump to chat
             </a>
+            <Link className="secondary-action" href="/vendors">
+              Open vendors
+            </Link>
+            <Link className="secondary-action" href="/storage">
+              Open storage
+            </Link>
             <a className="secondary-action" href="#story-cards">
               See workflow stages
             </a>

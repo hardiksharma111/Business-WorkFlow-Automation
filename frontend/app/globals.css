@@ -2417,6 +2417,132 @@ a {
   font-size: 0.9rem;
 }
 
+.demo-explain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.demo-explain-card {
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+}
+
+.demo-explain-card strong {
+  display: block;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 0.98rem;
+}
+
+.demo-explain-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.vendor-board {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.vendor-lane,
+.vendor-summary-card {
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+}
+
+.vendor-lane-head,
+.vendor-summary-top,
+.vendor-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vendor-lane h4,
+.vendor-summary-card h4 {
+  margin: 10px 0 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 1.15rem;
+}
+
+.vendor-count {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  color: #dbeafe;
+  background: rgba(96, 165, 250, 0.08);
+  font-size: 0.8rem;
+}
+
+.vendor-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.vendor-card {
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(8, 15, 28, 0.42);
+  padding: 12px;
+}
+
+.vendor-card strong {
+  font-family: var(--font-heading), sans-serif;
+}
+
+.vendor-card p,
+.vendor-summary-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.vendor-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.vendor-meta span,
+.vendor-note,
+.compact-pills span {
+  border-radius: 999px;
+  padding: 7px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: #d7e4f6;
+  font-size: 0.8rem;
+}
+
+.vendor-summary-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.vendor-note {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0;
+}
+
+.compact-pills {
+  margin-top: 2px;
+}
+
 .stage-strip {
   display: grid;
   gap: 10px;
@@ -2714,7 +2840,8 @@ a {
   }
 
   .home-footer-row,
-  .stage-strip {
+  .stage-strip,
+  .demo-explain-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -71,6 +71,35 @@ type DemoActionCard = {
   taskId: string;
 };
 
+type VendorLead = {
+  name: string;
+  category: string;
+  summary: string;
+  origin: string;
+  url?: string | null;
+  contact?: string | null;
+  confidence: number;
+};
+
+type VendorLane = {
+  label: string;
+  hint: string;
+  leads: VendorLead[];
+};
+
+type DemoNegotiation = {
+  summary: string;
+  strategy: string;
+  reply: string;
+  selectedSeller: string;
+  fallbackReason: string | null;
+  alternativePath: string;
+  trace: string[];
+  errorNotes: string[];
+  localVendors: VendorLead[];
+  onlineVendors: VendorLead[];
+};
+
 type DemoStage = {
   id: string;
   title: string;
@@ -103,6 +132,19 @@ const demoStages: DemoStage[] = [
   }
 ];
 
+const emptyNegotiation: DemoNegotiation = {
+  summary: "Run the flow to see vendor options, fallback notes, and the chosen seller.",
+  strategy: "Waiting for a request",
+  reply: "",
+  selectedSeller: "No vendor selected yet",
+  fallbackReason: null,
+  alternativePath: "Approve a request to trigger vendor sourcing.",
+  trace: [],
+  errorNotes: [],
+  localVendors: [],
+  onlineVendors: []
+};
+
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
@@ -126,6 +168,25 @@ function formatTime(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatConfidence(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function buildVendorLanes(negotiation: DemoNegotiation): VendorLane[] {
+  return [
+    {
+      label: "Local vendors",
+      hint: "Fastest path from nearby sellers.",
+      leads: negotiation.localVendors
+    },
+    {
+      label: "Online vendors",
+      hint: "Fallback sourcing if local supply is thin.",
+      leads: negotiation.onlineVendors
+    }
+  ];
+}
+
 export default function DashboardHome() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
@@ -138,6 +199,7 @@ export default function DashboardHome() {
   const [demoActionCard, setDemoActionCard] = useState<DemoActionCard | null>(null);
   const [demoDecision, setDemoDecision] = useState<"pending" | "approved" | "rejected">("pending");
   const [expandedStageId, setExpandedStageId] = useState<string | null>("parse");
+  const [negotiationView, setNegotiationView] = useState<DemoNegotiation>(emptyNegotiation);
 
   useEffect(() => {
     let mounted = true;
@@ -204,14 +266,15 @@ export default function DashboardHome() {
     setDemoDecision("pending");
     setDemoActionCard(null);
     setDemoMessages([]);
+    setNegotiationView(emptyNegotiation);
 
     pushDemoMessage("user", cleanMessage);
     await waitStep(400);
-    pushDemoMessage("system", "Parsing intent from unstructured message...");
+    pushDemoMessage("system", "Parsing intent from unstructured message and checking nearby vendors...");
     await waitStep(800);
-    pushDemoMessage("agent", "Stock out at primary vendor. Initiating self-healing protocol...");
+    pushDemoMessage("agent", "Stock out at primary vendor. Initiating self-healing protocol and comparing alternatives...");
     await waitStep(800);
-    pushDemoMessage("agent", "Contacting 3 local suppliers and ranking negotiated offers...");
+    pushDemoMessage("agent", "Contacting local suppliers, then escalating to online vendors if the shortlist is weak...");
 
     try {
       const response = await fetch(`${API_BASE}/api/v1/chat`, {
@@ -236,26 +299,92 @@ export default function DashboardHome() {
 
       const payload = (await response.json()) as NegotiationRunResponse;
       const seller = payload.negotiation?.selected_seller?.name ?? "Backup Supplier Network";
-      const summary = payload.negotiation?.summary ?? payload.assistant_reply;
+      const negotiation = payload.negotiation;
+      const localVendors = negotiation?.local_sellers ?? [];
+      const onlineVendors = negotiation?.online_sellers ?? [];
+      const summary = negotiation?.summary ?? payload.assistant_reply;
+
+      setNegotiationView({
+        summary,
+        strategy: negotiation?.strategy ?? "Negotiation path",
+        reply: negotiation?.reply ?? payload.assistant_reply,
+        selectedSeller: seller,
+        fallbackReason: negotiation?.fallback_reason ?? null,
+        alternativePath: negotiation?.alternative_path ?? "Keep sourcing until a seller is confirmed.",
+        trace: negotiation?.trace ?? [],
+        errorNotes: negotiation?.error_notes ?? [],
+        localVendors,
+        onlineVendors
+      });
+
       setDemoActionCard({
         title: `Best offer ready from ${seller}`,
-        details: `${summary} Route: ${payload.route}.`,
+        details: `${summary} Route: ${payload.route}. ${localVendors.length + onlineVendors.length} vendors checked.`,
         taskId: payload.task.id
       });
-      pushDemoMessage("agent", "Proposal ready. Review the action card and approve to send.");
+      pushDemoMessage("agent", `Proposal ready. ${localVendors.length} local and ${onlineVendors.length} online vendors found.`);
     } catch (err) {
       const fallbackId = `demo-${Date.now()}`;
+      const fallbackLocal: VendorLead[] = [
+        {
+          name: "Greenline Produce",
+          category: "Local supplier",
+          summary: "Can fulfill the order today with truck-slot confirmation.",
+          origin: "manual fallback",
+          confidence: 0.89
+        },
+        {
+          name: "Harbor Market Co-op",
+          category: "Local supplier",
+          summary: "Small-batch inventory, same-day dispatch available.",
+          origin: "manual fallback",
+          confidence: 0.84
+        },
+        {
+          name: "Metro Fresh Partners",
+          category: "Local supplier",
+          summary: "Backup warehouse option with afternoon pickup.",
+          origin: "manual fallback",
+          confidence: 0.81
+        }
+      ];
+      const fallbackOnline: VendorLead[] = [
+        {
+          name: "Regional Bulk Supply",
+          category: "Online supplier",
+          summary: "Ships overnight if local inventory is limited.",
+          origin: "manual fallback",
+          confidence: 0.77
+        },
+        {
+          name: "FarmGate Exchange",
+          category: "Online supplier",
+          summary: "Offers alternate pricing and transport scheduling.",
+          origin: "manual fallback",
+          confidence: 0.73
+        }
+      ];
+      setNegotiationView({
+        summary: "Backend was unavailable, so the demo is showing a realistic sourcing fallback with multiple vendors.",
+        strategy: "Fallback vendor sourcing",
+        reply: "I can still move the request forward with alternate vendors and a backup path.",
+        selectedSeller: fallbackLocal[0].name,
+        fallbackReason: "Live negotiation could not finish, so the demo switched to a synthetic vendor board.",
+        alternativePath: "Use the strongest local seller first, then escalate to online vendors.",
+        trace: ["fallback_vendor_board", "manual_vendor_lane", "demo_continuation"],
+        errorNotes: [err instanceof Error ? err.message : "Backend slow during demo."],
+        localVendors: fallbackLocal,
+        onlineVendors: fallbackOnline
+      });
       setDemoActionCard({
-        title: "Best fallback offer ready",
+        title: "Best fallback offer ready from Greenline Produce",
         details:
-          "Primary vendor unavailable. Secondary supplier can fulfill 50kg for same-day confirmation with backup logistics included.",
+          "Primary vendor unavailable, but the board still shows local and online vendors so the demo can continue.",
         taskId: fallbackId
       });
       pushDemoMessage(
         "agent",
-        err instanceof Error
-          ? `Backend slow during demo. Showing fail-safe proposal card: ${err.message}`
-          : "Backend slow during demo. Showing fail-safe proposal card."
+        "Backend slow during demo. Showing fallback vendor board with multiple local and online options."
       );
     } finally {
       setDemoBusy(false);
@@ -304,6 +433,7 @@ export default function DashboardHome() {
   const serviceSummary = systemStatus?.services ?? [];
   const activeStage = demoStages.find((stage) => stage.id === expandedStageId) ?? null;
   const liveClock = currentTime ? currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const vendorLanes = buildVendorLanes(negotiationView);
 
   return (
     <main className="control-room-shell">
@@ -442,8 +572,19 @@ export default function DashboardHome() {
           <span className="panel-tag">Demo command center</span>
           <h3>Unstructured message to structured action</h3>
           <p>
-            Type a raw business message and run a staged AI story that ends in an approve-or-reject action card.
+            Type a raw business message and run a staged AI story that ends in an approve-or-reject action card with vendor comparison.
           </p>
+
+          <div className="demo-explain-grid">
+            <div className="demo-explain-card">
+              <strong>Basic flow</strong>
+              <p>Message in, vendor search, ranked alternatives, human approval, then task update.</p>
+            </div>
+            <div className="demo-explain-card">
+              <strong>What changed</strong>
+              <p>The demo now shows local and online vendors instead of only the final seller.</p>
+            </div>
+          </div>
 
           <form className="negotiation-form" onSubmit={runDemoFlow}>
             <textarea
@@ -501,6 +642,63 @@ export default function DashboardHome() {
               <p className="action-card-status">Decision: {prettyLabel(demoDecision)}</p>
             </article>
           ) : null}
+
+          <div className="vendor-board">
+            {vendorLanes.map((lane) => (
+              <article key={lane.label} className="vendor-lane">
+                <div className="vendor-lane-head">
+                  <div>
+                    <p className="panel-tag">{lane.label}</p>
+                    <h4>{lane.hint}</h4>
+                  </div>
+                  <span className="vendor-count">{lane.leads.length} options</span>
+                </div>
+
+                <div className="vendor-list">
+                  {lane.leads.length ? (
+                    lane.leads.map((lead) => (
+                      <article key={`${lane.label}-${lead.name}`} className="vendor-card">
+                        <div className="vendor-card-head">
+                          <strong>{lead.name}</strong>
+                          <span>{formatConfidence(lead.confidence)}</span>
+                        </div>
+                        <p>{lead.summary}</p>
+                        <div className="vendor-meta">
+                          <span>{lead.category}</span>
+                          <span>{prettyLabel(lead.origin)}</span>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="negotiation-empty">No {lane.label.toLowerCase()} found in this run.</p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <article className="vendor-summary-card">
+            <div className="vendor-summary-top">
+              <div>
+                <p className="panel-tag">Negotiation summary</p>
+                <h4>{negotiationView.selectedSeller}</h4>
+              </div>
+              <span className="status-chip good">{negotiationView.strategy}</span>
+            </div>
+            <p>{negotiationView.summary}</p>
+            {negotiationView.fallbackReason ? <p className="vendor-note">Fallback: {negotiationView.fallbackReason}</p> : null}
+            <p className="vendor-note">Path: {negotiationView.alternativePath}</p>
+            {negotiationView.trace.length ? (
+              <div className="pill-list compact-pills">
+                {negotiationView.trace.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            ) : null}
+            {negotiationView.errorNotes.length ? (
+              <p className="vendor-note">Notes: {negotiationView.errorNotes.join(" | ")}</p>
+            ) : null}
+          </article>
         </article>
       </section>
 

@@ -1,5 +1,1 @@
-import DashboardHome from "@/components/dashboard-home";
-
-export default function Home() {
-  return <DashboardHome />;
-}
+export { default } from "../../frontend/app/page";
